@@ -88,11 +88,11 @@ else
   fail "Test 8: userPromptSubmit points to correct file"
 fi
 
-output=$(./.claude/hooks/init-capsule-session.sh 2>&1 || true)
-if [ -n "$output" ]; then
+./.claude/hooks/init-capsule-session.sh 2>&1 || true
+if [ -f ".claude/session_start.txt" ] && [ -f ".claude/message_count.txt" ]; then
   pass "Test 9: init-capsule-session.sh executes"
 else
-  fail "Test 9: init-capsule-session.sh executes" "No output"
+  fail "Test 9: init-capsule-session.sh executes" "Files not created"
 fi
 
 output=$(./.claude/hooks/update-capsule.sh 2>&1 || true)

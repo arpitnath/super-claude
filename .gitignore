@@ -8,6 +8,7 @@ __notepad__/*
 # OS files
 .DS_Store
 Thumbs.db
+scatch.pad.txt
 
 # Editor files
 *.swp

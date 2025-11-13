@@ -55,7 +55,7 @@ create_mock_persistence
 
 output=$(./.claude/hooks/session-start.sh 2>&1 || true)
 
-if echo "$output" | grep -q "RESTORING"; then
+if echo "$output" | grep -q "Restored:"; then
   pass "Test 7: session-start detects previous session"
 else
   fail "Test 7: session-start restoration" "No restoration message"
@@ -73,7 +73,7 @@ echo "{\"last_session\": {\"ended_at\": $old_timestamp, \"duration_seconds\": 10
 
 output=$(./.claude/hooks/session-start.sh 2>&1 || true)
 
-if ! echo "$output" | grep -q "RESTORING"; then
+if ! echo "$output" | grep -q "Restored:"; then
   pass "Test 9: Ignores sessions >24h old"
 else
   fail "Test 9: Session expiration" "Should not restore old session"
