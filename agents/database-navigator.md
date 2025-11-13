@@ -3,7 +3,8 @@ name: database-navigator
 description: |
   PROACTIVELY use this agent when exploring database schemas, understanding data models,
   or investigating database-related issues. Expert in SQL, migrations, and data relationships.
-tools: Read, Grep, Glob, Bash
+  Read-only agent for production safety.
+tools: Read, Grep, Glob
 model: sonnet
 ---
 

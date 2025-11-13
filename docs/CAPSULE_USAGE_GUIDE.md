@@ -125,6 +125,24 @@ The capsule injection appears automatically before each prompt. Use it to:
 4. **Log key findings** with log-subagent.sh
 5. **Continue work** using those findings
 
+### 🔒 Sub-Agent Production Safety
+
+**All sub-agents are read-only for production safety:**
+
+**✅ Sub-agents CAN:**
+- Read files (Read tool)
+- Search code (Grep tool)
+- Find files (Glob tool)
+- Fetch web content (WebFetch - architecture-explorer only)
+
+**❌ Sub-agents CANNOT:**
+- Execute bash commands (Bash tool removed)
+- Modify files (no Edit/Write tools)
+- Delete files
+- Run destructive operations
+
+**Why?** Sub-agents analyze and explore code but should never modify it. This prevents accidental file modifications in production environments.
+
 ### Example Session Flow
 
 ```

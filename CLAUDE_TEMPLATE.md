@@ -15,6 +15,26 @@ Super Claude Kit provides:
 
 **CRITICAL**: Read and follow `.claude/docs/CAPSULE_USAGE_GUIDE.md`
 
+## 🔒 Production Safety
+
+Super Claude Kit is designed for safe production use:
+
+**Sub-Agents (Read-Only):**
+All 4 built-in sub-agents (architecture-explorer, database-navigator, agent-developer, github-issue-tracker) are **read-only**. They can analyze and explore code but cannot modify files or execute destructive operations.
+
+**✅ Sub-agents CAN:**
+- Read files (Read tool)
+- Search code (Grep tool)
+- Find files (Glob tool)
+- Fetch web content (WebFetch - architecture-explorer only)
+
+**❌ Sub-agents CANNOT:**
+- Execute bash commands (Bash tool removed)
+- Modify files (no Edit/Write tools)
+- Delete files or run destructive operations
+
+This design prevents accidental file modifications while maintaining full analytical capabilities.
+
 ### Required Behavior
 
 Claude (you!) MUST follow these patterns:

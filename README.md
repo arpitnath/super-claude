@@ -100,6 +100,13 @@ Super Claude Kit includes 4 built-in sub-agents for common development tasks:
 3. **agent-developer** - Build and debug AI agents with MCP integration
 4. **github-issue-tracker** - Create well-formatted GitHub issues from discoveries
 
+**Production-Safe Design:**
+All sub-agents are **read-only** for safety. They can:
+- ✅ Read files, search code, find files, fetch web content
+- ❌ **Cannot** execute bash commands, modify files, or delete files
+
+This prevents accidental modifications in production environments.
+
 **Use them by launching the Task tool with `subagent_type`:**
 ```
 Task tool with subagent_type="architecture-explorer"
