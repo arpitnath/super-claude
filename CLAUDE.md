@@ -1,0 +1,129 @@
+# Super Claude Kit Integration
+
+This project uses **Super Claude Kit** - a persistent context memory system for Claude Code that enables cross-message and cross-session memory.
+
+## 🎯 System Overview
+
+Super Claude Kit provides:
+- **Persistent Context**: Remember files accessed, tasks worked on, and discoveries made
+- **Smart Refresh**: Automatic context updates before each prompt
+- **Cross-Session Memory**: Context persists across sessions (24-hour window)
+- **Sub-Agent Tracking**: Remember findings from specialized agents
+- **Discovery Logging**: Capture architectural insights and patterns
+
+## 📖 Usage Guide
+
+**CRITICAL**: Read and follow `.claude/docs/CAPSULE_USAGE_GUIDE.md`
+
+### Required Behavior
+
+Claude (you!) MUST follow these patterns:
+
+#### 1. Check Capsule Before Redundant Operations
+```
+BEFORE re-reading a file → Check if it's in capsule (Files in Context)
+BEFORE running git status → Check capsule (Git State)
+BEFORE asking about current task → Check capsule (Current Tasks)
+```
+
+#### 2. Log After Tool Usage
+
+**After Read/Edit/Write:**
+```bash
+./.claude/hooks/log-file-access.sh "<path>" "read|edit|write"
+```
+
+**After Task Tool (Sub-Agents):**
+```bash
+./.claude/hooks/log-subagent.sh "<agent-type>" "<summary-of-findings>"
+```
+
+**After Discoveries:**
+```bash
+./.claude/hooks/log-discovery.sh "<category>" "<insight>"
+# Categories: pattern, insight, decision, architecture, bug, optimization, achievement
+```
+
+**After TodoWrite:**
+```bash
+./.claude/hooks/log-task.sh "<status>" "<task-description>"
+# Status: in_progress, pending, completed
+```
+
+#### 3. Workflow Pattern
+
+```
+1. Check capsule → See current context
+2. Log task start → Mark as in_progress
+3. Work on task → Read/edit files
+4. Log operations → Track file access
+5. Log discoveries → Capture insights
+6. Complete task → Mark as completed
+```
+
+## 🚦 Hooks (Automatic)
+
+These run automatically via `.claude/settings.local.json`:
+
+- **SessionStart**: `session-start.sh` → Initialize capsule, restore previous session
+- **UserPromptSubmit**: `pre-task-analysis.sh` → Update capsule with latest changes
+
+## 📊 Verification
+
+Check if Super Claude Kit is working:
+
+```bash
+# View current stats
+bash .claude/scripts/show-stats.sh
+
+# Test installation
+bash .claude/scripts/test-super-claude.sh
+
+# Check logs
+ls -la .claude/*.log
+```
+
+## 💡 Best Practices
+
+### DO ✅
+- Check capsule before redundant file reads
+- Log after every Read/Edit/Write operation
+- Capture sub-agent findings immediately
+- Note architectural discoveries as you learn
+- Reference capsule context in responses
+
+### DON'T ❌
+- Ignore the capsule (defeats the purpose!)
+- Re-read files shown in capsule (unless stale)
+- Launch duplicate sub-agents for same task
+- Forget to log important operations
+- Over-log trivial operations
+
+## 🎓 Quick Reference
+
+```bash
+# File operations
+./.claude/hooks/log-file-access.sh "<path>" "read|edit|write"
+
+# Sub-agent results
+./.claude/hooks/log-subagent.sh "<type>" "<summary>"
+
+# Discoveries
+./.claude/hooks/log-discovery.sh "<category>" "<content>"
+
+# Tasks
+./.claude/hooks/log-task.sh "<status>" "<description>"
+
+# View stats
+bash .claude/scripts/show-stats.sh
+```
+
+## 📚 Full Documentation
+
+- **Usage Guide**: `.claude/docs/CAPSULE_USAGE_GUIDE.md` (detailed patterns and examples)
+- **System Architecture**: `.claude/docs/SUPER_CLAUDE_SYSTEM_ARCHITECTURE.md`
+- **GitHub**: https://github.com/arpitnath/super-claude-kit
+
+---
+
+**Remember**: The capsule is your external memory. Trust it, use it, maintain it!

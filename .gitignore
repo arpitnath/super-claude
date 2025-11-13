@@ -25,3 +25,6 @@ Thumbs.db
 # Backup files
 *.bak
 *.backup
+
+# Super Claude Kit session files (generated at runtime)
+.claude/*
