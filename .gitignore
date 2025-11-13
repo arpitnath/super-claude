@@ -26,5 +26,6 @@ Thumbs.db
 *.bak
 *.backup
 
-# Super Claude Kit session files (generated at runtime)
+CLAUDE.md
 .claude/*
+__notepad__/*

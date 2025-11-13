@@ -215,6 +215,14 @@ else
 fi
 echo ""
 
+# Save version and installation timestamp
+echo "Saving version information..."
+MANIFEST_VERSION=$(echo "$MANIFEST" | python3 -c "import sys, json; print(json.load(sys.stdin)['version'])")
+echo "$MANIFEST_VERSION" > "$INSTALL_DIR/.claude/.super-claude-version"
+date +%s > "$INSTALL_DIR/.claude/.super-claude-installed"
+echo "✓ Version $MANIFEST_VERSION tracked"
+echo ""
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Super Claude Kit Installed Successfully!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

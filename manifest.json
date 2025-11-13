@@ -27,7 +27,8 @@
     ],
     "scripts": [
       "show-stats.sh",
-      "test-super-claude.sh"
+      "test-super-claude.sh",
+      "update-super-claude.sh"
     ],
     "skills": [
       "context-saver",
