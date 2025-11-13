@@ -4,7 +4,8 @@ description: |
   PROACTIVELY use this agent when exploring codebase architecture,
   understanding service boundaries, data flows, or integration points.
   Specializes in explaining "how does X integrate with Y?" questions.
-tools: Read, Grep, Glob, Bash, WebFetch
+  Read-only agent for production safety.
+tools: Read, Grep, Glob, WebFetch
 model: sonnet
 ---
 

@@ -3,7 +3,8 @@ name: agent-developer
 description: |
   PROACTIVELY use this agent when developing or debugging mini-agents,
   understanding agent patterns, or troubleshooting MCP integrations.
-tools: Read, Grep, Glob, Bash
+  Read-only agent for production safety.
+tools: Read, Grep, Glob
 model: sonnet
 ---
 

@@ -82,5 +82,39 @@ echo "💡 Tip: All discoveries are persistent across this session."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+# Check for updates (non-blocking, rate-limited to once per day)
+if [ -f ".claude/.super-claude-version" ]; then
+  CURRENT_VERSION=$(cat .claude/.super-claude-version 2>/dev/null || echo "unknown")
+  LAST_CHECK_FILE=".claude/.last-update-check"
+
+  # Only check once per day (86400 seconds)
+  SHOULD_CHECK=false
+  if [ ! -f "$LAST_CHECK_FILE" ]; then
+    SHOULD_CHECK=true
+  else
+    LAST_CHECK=$(cat "$LAST_CHECK_FILE" 2>/dev/null || echo "0")
+    CURRENT_TIME=$(date +%s)
+    TIME_DIFF=$((CURRENT_TIME - LAST_CHECK))
+    if [ "$TIME_DIFF" -gt 86400 ]; then
+      SHOULD_CHECK=true
+    fi
+  fi
+
+  # Background check with timeout (non-blocking)
+  if [ "$SHOULD_CHECK" = true ]; then
+    (
+      LATEST_VERSION=$(curl -fsSL --max-time 2 https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/manifest.json 2>/dev/null | python3 -c "import sys, json; print(json.load(sys.stdin)['version'])" 2>/dev/null || echo "$CURRENT_VERSION")
+
+      if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ] && [ -n "$LATEST_VERSION" ] && [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
+        echo "📦 Super Claude Kit update available: $CURRENT_VERSION → $LATEST_VERSION"
+        echo "   Run: bash .claude/scripts/update-super-claude.sh"
+        echo ""
+      fi
+
+      date +%s > "$LAST_CHECK_FILE"
+    ) &
+  fi
+fi
+
 # Generate initial context capsule
 ./.claude/hooks/update-capsule.sh 2>/dev/null

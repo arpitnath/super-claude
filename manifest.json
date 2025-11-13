@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Arpit Nath",
   "description": "Super Claude Kit - Persistent Context Memory System for Claude Code",
   "components": {
@@ -14,10 +14,14 @@
       "log-subagent.sh",
       "log-task.sh",
       "persist-capsule.sh",
+      "post-tool-use.sh",
       "pre-task-analysis.sh",
+      "pre-tool-use.sh",
       "quality-check.sh",
       "restore-capsule.sh",
+      "session-end.sh",
       "session-start.sh",
+      "stop.sh",
       "suggest-discoveries.sh",
       "summarize-session.sh",
       "sync-to-journal.sh",
@@ -27,7 +31,8 @@
     ],
     "scripts": [
       "show-stats.sh",
-      "test-super-claude.sh"
+      "test-super-claude.sh",
+      "update-super-claude.sh"
     ],
     "skills": [
       "context-saver",
@@ -49,17 +54,8 @@
     ]
   },
   "gitignore_entries": [
-    "# Super Claude Kit session files (generated at runtime)",
-    ".claude/capsule.toon",
-    ".claude/capsule_persist.json",
-    ".claude/capsule.hash",
-    ".claude/last_refresh_state.txt",
-    ".claude/last_snapshot.txt",
-    ".claude/message_count.txt",
-    ".claude/session_start.txt",
-    ".claude/session_files.log",
-    ".claude/current_tasks.log",
-    ".claude/subagent_results.log",
-    ".claude/session_discoveries.log"
+    "# Super Claude Kit (generated at runtime)",
+    ".claude/**",
+    "CLAUDE.md"
   ]
 }

@@ -3,7 +3,8 @@ name: github-issue-tracker
 description: |
   Use this agent when you need to create, manage, or track GitHub issues during development workflows.
   Creates properly formatted issues with context, labels, and assignees.
-tools: Bash, Read, Grep, Glob
+  Read-only agent for production safety.
+tools: Read, Grep, Glob
 model: haiku
 ---
 
