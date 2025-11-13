@@ -33,61 +33,24 @@ You're the tour guide, and Claude is the tourist who keeps asking for directions
 
 ### 🧠 Persistent Memory
 
-Claude remembers:
-- Files accessed (with timestamps)
-- Current tasks (in progress, pending, completed)
-- Sub-agent results (Explore, Plan, etc.)
-- Session discoveries (patterns, insights, decisions)
-- Git state (branch, dirty files, commits)
+Claude remembers across messages and sessions (24-hour window):
+- Files accessed
+- Current tasks
+- Sub-agent results
+- Session discoveries
+- Git state
 
 ### 📊 Context Capsule
 
-Before every prompt, Claude sees a compact summary:
+Before every prompt, Claude sees a compact summary of the session state - git status, files in context, current tasks, discoveries, and more.
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 CONTEXT CAPSULE (Updated)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🌿 Git State:
-   Branch: main (HEAD: a1b2c3d)
-   ⚠️  5 dirty file(s)
-
-📁 Files in Context:
-   • server/auth.ts (read, 2m ago)
-   • api/gateway.go (edit, 5m ago)
-
-✅ Current Tasks:
-   🔄 [IN PROGRESS] Implementing auth system
-   ✅ [DONE] Design database schema
-
-💡 Session Discoveries:
-   🔍 [pattern] Auth uses JWT + Redis sessions
-   🏗️ [architecture] Gateway proxies to microservices
-
-⏱️  Session Info:
-   Messages: 8 | Session: 12m
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+**See detailed examples in [System Architecture](.claude/docs/SUPER_CLAUDE_SYSTEM_ARCHITECTURE.md)**
 
 ### 🔄 Cross-Session Restoration
 
-Start a new session within 24 hours, and Claude restores:
-- Last 10 discoveries
-- Last 15 files accessed
-- Last 5 sub-agent results
-- Previous session metadata
+Start a new session within 24 hours and Claude automatically restores context from the previous session.
 
-```
-🔄 RESTORING FROM PREVIOUS SESSION
-Last session ended: 30m ago
-Previous session: 15m on branch main
-
-💡 Key Discoveries from Last Session:
-   🔍 [pattern] Redis stores session tokens with 24h TTL
-   🏗️ [architecture] Auth service uses middleware pattern
-```
+**See [Usage Guide](.claude/docs/CAPSULE_USAGE_GUIDE.md) for details**
 
 
 
@@ -110,6 +73,22 @@ This prevents accidental modifications in production environments.
 **Use them by launching the Task tool with `subagent_type`:**
 ```
 Task tool with subagent_type="architecture-explorer"
+```
+
+### 🎯 Quality Hooks (NEW in v1.1.0)
+
+Automatic quality improvements:
+
+- **PreToolUse** - Warns before redundant file reads (saves tokens)
+- **Stop** - Suggests logging discoveries when ratio poor (improves quality)
+- **SessionEnd** - Auto-persists capsule on exit (zero friction)
+
+Example warnings:
+```
+[TIP] File recently read (2m ago) - check capsule first
+
+[QUALITY TIP] Accessed 5 files but logged 0 discoveries
+Consider: ./.claude/hooks/log-discovery.sh "<category>" "<finding>"
 ```
 
 ---
@@ -136,8 +115,9 @@ curl -sL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/ins
 
 ### What Gets Installed
 
-- ✅ 20 hooks (automatic automation)
-- ✅ 2 utility scripts (manual testing & stats)
+- ✅ 24 hooks (automatic automation + quality improvements)
+- ✅ 7 active hooks (SessionStart, UserPromptSubmit, PostToolUse, PreToolUse, Stop, SessionEnd, +1 more)
+- ✅ 3 utility scripts (testing, stats, updates)
 - ✅ 3 skills (context-saver, exploration-continue, task-router)
 - ✅ 4 sub-agents (architecture-explorer, database-navigator, agent-developer, github-issue-tracker)
 - ✅ Documentation & usage guides
@@ -158,102 +138,49 @@ bash .claude/scripts/show-stats.sh
 
 ## Usage
 
-### Automatic Features
+### Automatic Features (v1.1.0)
 
-These work without any manual intervention:
+Everything works automatically with zero configuration:
 
-- ✅ Git state tracking (every prompt)
-- ✅ Smart refresh (hash-based change detection)
-- ✅ Capsule injection (only when state changes)
-- ✅ Cross-session persistence (automatic save/restore)
-- ✅ Journal sync (discoveries → Markdown)
-- ✅ **Auto-logging** (PostToolUse hook) - NEW!
-  - File access (Read/Edit/Write) logged automatically
-  - Sub-agent completions logged automatically
-  - TodoWrite updates logged automatically
-  - ~95% reduction in manual logging
+- ✅ **95% Auto-logging** - File operations, sub-agents, tasks tracked automatically
+- ✅ **Quality hooks** - Smart warnings and suggestions
+- ✅ **Smart refresh** - Updates only when needed
+- ✅ **Session persistence** - Auto-saves on exit, auto-restores on start
+- ✅ **Git tracking** - Current branch and status always visible
 
-### Manual Logging (Optional)
-
-Most logging is now automatic via PostToolUse hook.
-
-**Still required (discoveries):**
+**Only discoveries require manual logging** - Claude decides what's important:
 ```bash
-# Manually log discoveries - Claude decides what's important
 ./.claude/hooks/log-discovery.sh "pattern" "Auth uses JWT tokens"
 ./.claude/hooks/log-discovery.sh "decision" "Using PostgreSQL for storage"
 ```
 
-**Optional (if PostToolUse disabled):**
-```bash
-# File access (automatic if PostToolUse enabled)
-./.claude/hooks/log-file-access.sh "path/to/file" "read"
-
-# Sub-agent results (automatic if PostToolUse enabled)
-./.claude/hooks/log-subagent.sh "Explore" "Found auth in server/auth/"
-
-# Task status (automatic if using TodoWrite)
-./.claude/hooks/log-task.sh "in_progress" "Implementing auth"
-```
-
-### Utilities
-
-```bash
-# Get discovery suggestions
-./.claude/hooks/suggest-discoveries.sh
-
-# View session summary
-./.claude/hooks/summarize-session.sh
-
-# Force capsule refresh
-rm .claude/last_refresh_state.txt
-./.claude/hooks/update-capsule.sh
-```
+**For complete usage guide, see [CAPSULE_USAGE_GUIDE.md](.claude/docs/CAPSULE_USAGE_GUIDE.md)**
 
 
 ---
 
 ## Troubleshooting
 
-### Hooks not running?
+**Quick checks:**
 
-Check Claude Code configuration:
 ```bash
-cat .claude/config.json
+# Verify installation
+bash .claude/scripts/test-super-claude.sh
+
+# View current stats
+bash .claude/scripts/show-stats.sh
+
+# Check version
+cat .claude/version.txt
 ```
 
-Should have:
-```json
-{
-  "hooks": {
-    "sessionStart": ".claude/hooks/session-start.sh",
-    "userPromptSubmit": ".claude/hooks/pre-task-analysis.sh"
-  }
-}
-```
+**Common issues:**
 
-### Capsule not updating?
+- **Hooks not running?** Check `.claude/settings.local.json` has SessionStart and UserPromptSubmit configured
+- **Capsule not updating?** Run `rm .claude/last_refresh_state.txt` to force refresh
+- **Session not persisting?** SessionEnd hook auto-persists on exit (v1.1.0+)
 
-Check refresh state:
-```bash
-cat .claude/last_refresh_state.txt
-rm .claude/last_refresh_state.txt  # Force refresh
-```
-
-### Session not persisting?
-
-Check persistence file:
-```bash
-cat .claude/capsule_persist.json | python3 -m json.tool
-```
-
-### Logs growing too large?
-
-Session logs clear on new session start. If needed:
-```bash
-> .claude/session_files.log
-> .claude/session_discoveries.log
-```
+**For detailed troubleshooting, see [System Architecture](.claude/docs/SUPER_CLAUDE_SYSTEM_ARCHITECTURE.md)**
 
 ---
 
