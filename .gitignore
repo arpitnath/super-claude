@@ -1,15 +1,9 @@
-# Session files (generated at runtime)
-capsule.toon
-capsule_persist.json
-capsule.hash
-last_refresh_state.txt
-last_snapshot.txt
-message_count.txt
-session_start.txt
-session_files.log
-current_tasks.log
-subagent_results.log
-session_discoveries.log
+# Super Claude Kit - Session files (generated at runtime)
+.claude/**
+CLAUDE.md
+
+# Internal notes (not for repo)
+__notepad__/*
 
 # OS files
 .DS_Store
@@ -25,7 +19,3 @@ Thumbs.db
 # Backup files
 *.bak
 *.backup
-
-CLAUDE.md
-.claude/*
-__notepad__/*
