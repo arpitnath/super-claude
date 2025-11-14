@@ -1,40 +1,34 @@
 #!/usr/bin/env bash
-# Super Claude Kit v2.0.0 - Audit Logger for Tool Executions
-# Logs all tool executions with timestamps and outcomes
+# Audit logger - logs tool executions with timestamps and outcomes
+# Tracks tool runs, permission checks, and hook executions
 
 set -euo pipefail
 
-# Audit log file location
 AUDIT_LOG="${AUDIT_LOG:-$HOME/.claude/audit.log}"
 
-# Ensure log directory exists
 mkdir -p "$(dirname "$AUDIT_LOG")"
 
-# Log tool execution
 log_tool_execution() {
     local tool_name="$1"
     local operation="$2"
-    local status="$3"  # started, success, failed, denied
+    local status="$3"
     local details="${4:-}"
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-    # Create log entry
     local log_entry="[$timestamp] TOOL=$tool_name OPERATION=$operation STATUS=$status"
 
     if [ -n "$details" ]; then
         log_entry="$log_entry DETAILS=$details"
     fi
 
-    # Append to audit log
     echo "$log_entry" >> "$AUDIT_LOG"
 }
 
-# Log permission check
 log_permission_check() {
     local tool_name="$1"
-    local permission_type="$2"  # read, write, network
+    local permission_type="$2"
     local target="$3"
-    local result="$4"  # allowed, denied
+    local result="$4"
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
     local log_entry="[$timestamp] PERMISSION_CHECK TOOL=$tool_name TYPE=$permission_type TARGET=$target RESULT=$result"
@@ -42,10 +36,9 @@ log_permission_check() {
     echo "$log_entry" >> "$AUDIT_LOG"
 }
 
-# Log hook execution
 log_hook_execution() {
     local hook_name="$1"
-    local status="$2"  # started, success, failed
+    local status="$2"
     local duration="${3:-}"
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -58,7 +51,6 @@ log_hook_execution() {
     echo "$log_entry" >> "$AUDIT_LOG"
 }
 
-# Query audit log
 query_audit_log() {
     local filter="${1:-}"
     local limit="${2:-100}"
@@ -75,16 +67,13 @@ query_audit_log() {
     fi
 }
 
-# Get audit log stats
 get_audit_stats() {
     if [ ! -f "$AUDIT_LOG" ]; then
         echo "No audit log found" >&2
         return 1
     fi
 
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "Super Claude Kit - Audit Log Statistics"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 
     local total_entries=$(wc -l < "$AUDIT_LOG")
@@ -101,19 +90,16 @@ get_audit_stats() {
     echo ""
     echo "Hook executions:"
     grep "HOOK=" "$AUDIT_LOG" | grep -o "HOOK=[^ ]*" | sort | uniq -c | sort -rn | head -10
-
     echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
-# Rotate audit log if too large (> 10MB)
 rotate_audit_log() {
     if [ ! -f "$AUDIT_LOG" ]; then
         return 0
     fi
 
     local file_size=$(stat -f%z "$AUDIT_LOG" 2>/dev/null || stat -c%s "$AUDIT_LOG" 2>/dev/null || echo "0")
-    local max_size=$((10 * 1024 * 1024))  # 10MB
+    local max_size=$((10 * 1024 * 1024))
 
     if [ "$file_size" -gt "$max_size" ]; then
         local timestamp=$(date +"%Y%m%d-%H%M%S")
@@ -124,7 +110,6 @@ rotate_audit_log() {
     fi
 }
 
-# Export functions if sourced
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f log_tool_execution
     export -f log_permission_check

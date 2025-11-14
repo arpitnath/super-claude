@@ -1,17 +1,12 @@
 #!/bin/bash
-# Tool Runner - Universal tool execution framework v2.0.0
-# Supports tools written in any language (Python, Node, Go, Ruby, etc.)
-# With sandboxing, permission validation, and audit logging
+# Tool runner - universal tool execution framework with sandboxing
+# Supports bash, python, node, go, and binary tools with permission validation and audit logging
 
-# Get the directory where this script is located
 TOOL_RUNNER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# When installed, this will be .claude/lib/tool-runner.sh
-# So SCK_ROOT should be the project root (two levels up from .claude/lib)
 SCK_ROOT="$(cd "$TOOL_RUNNER_DIR/../.." && pwd)"
 CLAUDE_TOOLS_DIR="$SCK_ROOT/.claude/tools"
 TOOLS_CACHE="$HOME/.claude/.tools_cache.json"
 
-# Source sandboxing components
 SANDBOX_VALIDATOR="$TOOL_RUNNER_DIR/sandbox-validator.sh"
 AUDIT_LOGGER="$TOOL_RUNNER_DIR/audit-logger.sh"
 
@@ -23,7 +18,6 @@ if [[ -f "$AUDIT_LOGGER" ]]; then
     source "$AUDIT_LOGGER"
 fi
 
-# Logging functions
 log_tool() {
     echo "[tool-runner] $*" >&2
 }
@@ -32,21 +26,17 @@ error_tool() {
     echo "[tool-runner ERROR] $*" >&2
 }
 
-# Discover all tools and cache metadata
 discover_tools() {
     local tools_json="[]"
 
-    # Find all tool.json files in .claude/tools (where they're installed)
     if [[ -d "$CLAUDE_TOOLS_DIR" ]]; then
         for tool_manifest in "$CLAUDE_TOOLS_DIR"/*/tool.json; do
             if [[ -f "$tool_manifest" ]]; then
                 local tool_dir="$(dirname "$tool_manifest")"
                 local tool_name="$(basename "$tool_dir")"
 
-                # Read and validate tool.json
                 if command -v jq >/dev/null 2>&1; then
                     local tool_meta=$(cat "$tool_manifest")
-                    # Add tool_dir to metadata for execution
                     tool_meta=$(echo "$tool_meta" | jq --arg dir "$tool_dir" '. + {tool_dir: $dir}')
                     tools_json=$(echo "$tools_json" | jq --argjson tool "$tool_meta" '. += [$tool]')
                 fi
@@ -54,21 +44,17 @@ discover_tools() {
         done
     fi
 
-    # Save to cache
     echo "$tools_json" > "$TOOLS_CACHE"
     echo "$tools_json"
 }
 
-# Get tool metadata from cache
 get_tool_metadata() {
     local tool_name="$1"
 
-    # Refresh cache if missing or old (1 hour)
     if [[ ! -f "$TOOLS_CACHE" ]] || [[ $(find "$TOOLS_CACHE" -mmin +60 2>/dev/null) ]]; then
         discover_tools >/dev/null
     fi
 
-    # Extract tool metadata
     if command -v jq >/dev/null 2>&1; then
         cat "$TOOLS_CACHE" | jq -r ".[] | select(.name == \"$tool_name\")"
     else
@@ -77,8 +63,6 @@ get_tool_metadata() {
     fi
 }
 
-# Execute a tool with given parameters (sandboxed)
-# Usage: run_tool <tool_name> [params...]
 run_tool() {
     local tool_name="$1"
     shift
@@ -89,14 +73,12 @@ run_tool() {
         return 1
     fi
 
-    # Log tool execution start
     if command -v log_tool_execution >/dev/null 2>&1; then
         log_tool_execution "$tool_name" "execute" "started" "${tool_params[*]}"
     fi
 
     local start_time=$(date +%s%3N)
 
-    # Get tool metadata
     local metadata=$(get_tool_metadata "$tool_name")
     if [[ -z "$metadata" ]]; then
         error_tool "Tool not found: $tool_name"
@@ -107,11 +89,10 @@ run_tool() {
         return 1
     fi
 
-    # Extract metadata fields
     local tool_type=$(echo "$metadata" | jq -r '.type // "bash"')
     local tool_entry=$(echo "$metadata" | jq -r '.entry')
     local tool_dir=$(echo "$metadata" | jq -r '.tool_dir')
-    local timeout=$(echo "$metadata" | jq -r '.timeout // 300')  # Default 5 minutes
+    local timeout=$(echo "$metadata" | jq -r '.timeout // 300')
 
     if [[ -z "$tool_entry" ]] || [[ "$tool_entry" == "null" ]]; then
         error_tool "Tool '$tool_name' has no entry point defined"
@@ -129,10 +110,6 @@ run_tool() {
         return 1
     fi
 
-    # Validate permissions (basic validation - full validation happens in tool execution)
-    # This is a simplified check - actual permission validation happens when tools access resources
-
-    # Execute based on tool type with timeout
     local exit_code=0
     case "$tool_type" in
         bash)
@@ -159,11 +136,9 @@ run_tool() {
             ;;
     esac
 
-    # Calculate duration
     local end_time=$(date +%s%3N)
     local duration=$((end_time - start_time))
 
-    # Log completion
     if command -v log_tool_execution >/dev/null 2>&1; then
         if [ $exit_code -eq 0 ]; then
             log_tool_execution "$tool_name" "execute" "success" "duration:${duration}ms"
@@ -177,7 +152,6 @@ run_tool() {
     return $exit_code
 }
 
-# Execute bash tool
 run_bash_tool() {
     local tool_dir="$1"
     local entry="$2"
@@ -192,7 +166,6 @@ run_bash_tool() {
     bash "$script_path" "$@"
 }
 
-# Execute Python tool
 run_python_tool() {
     local tool_dir="$1"
     local entry="$2"
@@ -212,7 +185,6 @@ run_python_tool() {
     python3 "$script_path" "$@"
 }
 
-# Execute Node.js tool
 run_node_tool() {
     local tool_dir="$1"
     local entry="$2"
@@ -232,13 +204,11 @@ run_node_tool() {
     node "$script_path" "$@"
 }
 
-# Execute Go tool
 run_go_tool() {
     local tool_dir="$1"
     local entry="$2"
     shift 2
 
-    # For Go, entry is the main.go file or directory
     local go_path="$tool_dir/$entry"
 
     if ! command -v go >/dev/null 2>&1; then
@@ -246,11 +216,9 @@ run_go_tool() {
         return 1
     fi
 
-    # Run with go run
     (cd "$tool_dir" && go run "$entry" "$@")
 }
 
-# Execute binary tool
 run_binary_tool() {
     local tool_dir="$1"
     local entry="$2"
@@ -270,7 +238,6 @@ run_binary_tool() {
     "$bin_path" "$@"
 }
 
-# List all available tools
 list_tools() {
     if [[ ! -f "$TOOLS_CACHE" ]] || [[ $(find "$TOOLS_CACHE" -mmin +60 2>/dev/null) ]]; then
         discover_tools >/dev/null
@@ -283,7 +250,6 @@ list_tools() {
     fi
 }
 
-# Show tool info
 tool_info() {
     local tool_name="$1"
 
@@ -301,7 +267,6 @@ tool_info() {
     echo "$metadata" | jq .
 }
 
-# Export functions for use in other scripts
 export -f run_tool
 export -f list_tools
 export -f tool_info
