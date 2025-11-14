@@ -1,0 +1,36 @@
+{
+  "name": "find-circular",
+  "version": "2.0.0",
+  "description": "Find circular dependency cycles in the codebase",
+  "type": "bash",
+  "entry": "find-circular.sh",
+  "author": "Arpit Nath",
+  "keywords": ["circular", "dependencies", "cycles", "architecture"],
+  "usage": {
+    "command": "find-circular",
+    "args": {},
+    "examples": [
+      {
+        "description": "Find all circular dependencies",
+        "command": "find-circular"
+      }
+    ]
+  },
+  "requires": {
+    "graph": "~/.claude/dep-graph.toon"
+  },
+  "outputs": {
+    "format": "text",
+    "content": "List of circular dependency cycles"
+  },
+  "permissions": {
+    "read": ["~/.claude/dep-graph.toon"],
+    "write": [],
+    "network": false
+  },
+  "autoRun": {
+    "enabled": true,
+    "triggers": ["session-start"],
+    "condition": "cycles-exist"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "find-dead-code",
+  "version": "2.0.0",
+  "description": "Find potentially unused files (not imported by anyone)",
+  "type": "bash",
+  "entry": "find-dead-code.sh",
+  "author": "Arpit Nath",
+  "keywords": ["dead-code", "unused", "cleanup", "optimization"],
+  "usage": {
+    "command": "find-dead-code",
+    "args": {},
+    "examples": [
+      {
+        "description": "Find all unused files",
+        "command": "find-dead-code"
+      }
+    ]
+  },
+  "requires": {
+    "graph": "~/.claude/dep-graph.toon"
+  },
+  "outputs": {
+    "format": "text",
+    "content": "List of files not imported by others"
+  },
+  "permissions": {
+    "read": ["~/.claude/dep-graph.toon"],
+    "write": [],
+    "network": false
+  },
+  "autoRun": {
+    "enabled": false,
+    "triggers": [],
+    "condition": "manual"
+  }
+}

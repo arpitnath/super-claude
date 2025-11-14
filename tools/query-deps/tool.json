@@ -1,0 +1,34 @@
+{
+  "name": "query-deps",
+  "version": "2.0.0",
+  "description": "Query dependencies for a specific file - shows what it imports and who imports it",
+  "type": "bash",
+  "entry": "query-deps.sh",
+  "author": "Arpit Nath",
+  "keywords": ["dependencies", "imports", "query"],
+  "usage": {
+    "command": "query-deps <file-path>",
+    "args": {
+      "file-path": "Path to the file to query"
+    },
+    "examples": [
+      {
+        "description": "Query dependencies for auth.ts",
+        "command": "query-deps src/auth.ts"
+      }
+    ]
+  },
+  "requires": {
+    "graph": "~/.claude/dep-graph.toon"
+  },
+  "permissions": {
+    "read": ["~/.claude/dep-graph.toon"],
+    "write": [],
+    "network": false
+  },
+  "autoRun": {
+    "enabled": false,
+    "triggers": [],
+    "condition": "manual"
+  }
+}

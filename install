@@ -10,37 +10,33 @@ echo "🚀 Super Claude Kit Installation"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Configuration
 GITHUB_REPO="arpitnath/super-claude-kit"
-GITHUB_BRANCH="master"
-GITHUB_RAW="https://raw.githubusercontent.com/$GITHUB_REPO/$GITHUB_BRANCH"
+VERSION="${VERSION:-master}"
+GITHUB_RAW="https://raw.githubusercontent.com/$GITHUB_REPO/$VERSION"
 
-# Save current directory (where user wants to install)
 INSTALL_DIR="$(pwd)"
 
-# Get script directory (handle both local execution and piped curl)
-# Temporarily disable -u flag to check BASH_SOURCE safely
 set +u
 if [ -n "${BASH_SOURCE[0]:-}" ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 else
-  # Piped from curl, no source file
   SCRIPT_DIR=""
 fi
 set -u
 
-# Detect installation mode
 INSTALL_MODE="remote"
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/manifest.json" ] && [ -d "$SCRIPT_DIR/hooks" ]; then
   INSTALL_MODE="local"
   echo "📦 Local installation mode detected"
 else
   echo "🌐 Remote installation mode (downloading from GitHub)"
+  if [ "$VERSION" != "master" ]; then
+    echo "📌 Installing version: $VERSION"
+  fi
 fi
 
 echo ""
 
-# Check if we're in a git repository (recommended)
 if [ ! -d "$INSTALL_DIR/.git" ]; then
   echo "⚠️  Warning: Not in a git repository"
   echo "   Super Claude Kit works best in git repositories"
@@ -53,17 +49,17 @@ if [ ! -d "$INSTALL_DIR/.git" ]; then
   echo ""
 fi
 
-# Create directories
 echo "Creating .claude directories..."
 mkdir -p "$INSTALL_DIR/.claude/hooks"
 mkdir -p "$INSTALL_DIR/.claude/agents"
 mkdir -p "$INSTALL_DIR/.claude/skills"
 mkdir -p "$INSTALL_DIR/.claude/scripts"
 mkdir -p "$INSTALL_DIR/.claude/docs"
+mkdir -p "$INSTALL_DIR/.claude/lib"
+mkdir -p "$INSTALL_DIR/.claude/tools"
 echo "✓ Directories created"
 echo ""
 
-# Download or copy manifest
 echo "Loading manifest..."
 if [ "$INSTALL_MODE" = "local" ]; then
   MANIFEST=$(cat "$SCRIPT_DIR/manifest.json")
@@ -73,7 +69,6 @@ fi
 echo "✓ Manifest loaded"
 echo ""
 
-# Helper function to download or copy file
 install_file() {
   local source_path=$1
   local dest_path=$2
@@ -85,7 +80,6 @@ install_file() {
   fi
 }
 
-# Install hooks
 echo "Installing hooks..."
 HOOK_COUNT=0
 for hook in $(echo "$MANIFEST" | python3 -c "import sys, json; [print(h) for h in json.load(sys.stdin)['components']['hooks']]"); do
@@ -96,7 +90,22 @@ done
 echo "✓ Installed $HOOK_COUNT hooks"
 echo ""
 
-# Install scripts
+echo "Installing library files..."
+LIB_COUNT=0
+for lib_file in $(echo "$MANIFEST" | python3 -c "import sys, json; [print(l) for l in json.load(sys.stdin)['components'].get('lib', [])]" 2>/dev/null || echo ""); do
+  if [ -n "$lib_file" ]; then
+    install_file "lib/$lib_file" ".claude/lib/$lib_file"
+    chmod +x ".claude/lib/$lib_file"
+    LIB_COUNT=$((LIB_COUNT + 1))
+  fi
+done
+if [ "$LIB_COUNT" -gt 0 ]; then
+  echo "✓ Installed $LIB_COUNT library files"
+else
+  echo "✓ No library files to install"
+fi
+echo ""
+
 echo "Installing utility scripts..."
 SCRIPT_COUNT=0
 for script in $(echo "$MANIFEST" | python3 -c "import sys, json; [print(s) for s in json.load(sys.stdin)['components']['scripts']]"); do
@@ -107,7 +116,34 @@ done
 echo "✓ Installed $SCRIPT_COUNT utility scripts"
 echo ""
 
-# Install skills
+echo "Installing dependency tools..."
+TOOL_COUNT=0
+for tool in $(echo "$MANIFEST" | python3 -c "import sys, json; [print(t) for t in json.load(sys.stdin)['components'].get('tools', [])]" 2>/dev/null || echo ""); do
+  if [ -n "$tool" ]; then
+    mkdir -p "$INSTALL_DIR/.claude/tools/$tool"
+
+    if [ "$INSTALL_MODE" = "local" ]; then
+      cp -r "$SCRIPT_DIR/tools/$tool/"* "$INSTALL_DIR/.claude/tools/$tool/"
+    else
+      curl -fsSL "$GITHUB_RAW/tools/$tool/tool.json" -o "$INSTALL_DIR/.claude/tools/$tool/tool.json"
+
+      ENTRY=$(cat "$INSTALL_DIR/.claude/tools/$tool/tool.json" | python3 -c "import sys, json; print(json.load(sys.stdin).get('entry', ''))" 2>/dev/null || echo "")
+      if [ -n "$ENTRY" ]; then
+        curl -fsSL "$GITHUB_RAW/tools/$tool/$ENTRY" -o "$INSTALL_DIR/.claude/tools/$tool/$ENTRY"
+        chmod +x "$INSTALL_DIR/.claude/tools/$tool/$ENTRY"
+      fi
+    fi
+
+    TOOL_COUNT=$((TOOL_COUNT + 1))
+  fi
+done
+if [ "$TOOL_COUNT" -gt 0 ]; then
+  echo "✓ Installed $TOOL_COUNT dependency tools"
+else
+  echo "✓ No tools to install (will be added in updates)"
+fi
+echo ""
+
 echo "Installing skills..."
 SKILL_COUNT=0
 for skill in $(echo "$MANIFEST" | python3 -c "import sys, json; [print(s) for s in json.load(sys.stdin)['components']['skills']]"); do
@@ -118,7 +154,6 @@ done
 echo "✓ Installed $SKILL_COUNT skills"
 echo ""
 
-# Install agents
 echo "Installing sub-agents..."
 AGENT_COUNT=0
 for agent in $(echo "$MANIFEST" | python3 -c "import sys, json; [print(a) for a in json.load(sys.stdin)['components']['agents']]"); do
@@ -128,7 +163,6 @@ done
 echo "✓ Installed $AGENT_COUNT sub-agents"
 echo ""
 
-# Install documentation
 echo "Installing documentation..."
 for doc in $(echo "$MANIFEST" | python3 -c "import sys, json; [print(d) for d in json.load(sys.stdin)['components']['docs']]"); do
   install_file "docs/$doc" ".claude/docs/$doc"
@@ -136,7 +170,45 @@ done
 echo "✓ Documentation installed"
 echo ""
 
-# Create or update settings.local.json
+echo "Installing dependency scanner binary..."
+mkdir -p "$HOME/.claude/bin"
+
+ARCH=$(uname -m)
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+case "$ARCH" in
+  x86_64) ARCH="amd64" ;;
+  arm64|aarch64) ARCH="arm64" ;;
+esac
+
+case "$OS" in
+  darwin) OS="darwin" ;;
+  linux) OS="linux" ;;
+  *) OS="unknown" ;;
+esac
+
+BINARY_NAME="dependency-scanner-${OS}-${ARCH}"
+
+if [ "$INSTALL_MODE" = "local" ] && [ -f "$SCRIPT_DIR/tools/dependency-scanner/bin/$BINARY_NAME" ]; then
+  cp "$SCRIPT_DIR/tools/dependency-scanner/bin/$BINARY_NAME" "$HOME/.claude/bin/dependency-scanner"
+  chmod +x "$HOME/.claude/bin/dependency-scanner"
+  echo "✓ Dependency scanner installed (local)"
+elif [ "$OS" != "unknown" ]; then
+  BINARY_URL="https://github.com/arpitnath/super-claude-kit/releases/download/v2.0.0/${BINARY_NAME}"
+
+  if curl -fsSL "$BINARY_URL" -o "$HOME/.claude/bin/dependency-scanner" 2>/dev/null; then
+    chmod +x "$HOME/.claude/bin/dependency-scanner"
+    echo "✓ Dependency scanner installed"
+  else
+    echo "⚠️  Could not download dependency scanner (will be available in v2.0 release)"
+    echo "   Scanner functionality will be skipped until available"
+  fi
+else
+  echo "⚠️  Unsupported platform: $OS-$ARCH"
+  echo "   Dependency scanner will not be installed"
+fi
+echo ""
+
 echo "Configuring Claude Code..."
 if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
   cat > "$INSTALL_DIR/.claude/settings.local.json" << 'EOF'
@@ -215,16 +287,13 @@ EOF
 else
   echo "✓ settings.local.json exists, merging hooks..."
 
-  # Smart merge: Add missing hooks without overwriting existing settings
   python3 << 'PYTHON_MERGE'
 import json
 import sys
 
-# Read existing settings
 with open('.claude/settings.local.json', 'r') as f:
     existing = json.load(f)
 
-# Define required hooks from v1.1.0
 required_hooks = {
     "SessionStart": [{
         "matcher": "*",
@@ -252,11 +321,9 @@ required_hooks = {
     }]
 }
 
-# Ensure hooks object exists
 if 'hooks' not in existing:
     existing['hooks'] = {}
 
-# Merge: Add missing hooks, preserve existing
 merged = False
 for hook_name, hook_config in required_hooks.items():
     if hook_name not in existing['hooks']:
@@ -264,7 +331,6 @@ for hook_name, hook_config in required_hooks.items():
         merged = True
         print(f"  + Added {hook_name} hook")
 
-# Write back merged settings
 with open('.claude/settings.local.json', 'w') as f:
     json.dump(existing, f, indent=2)
 
@@ -276,7 +342,6 @@ PYTHON_MERGE
 fi
 echo ""
 
-# Update .gitignore
 echo "Updating .gitignore..."
 if [ -f "$INSTALL_DIR/.gitignore" ]; then
   if ! grep -q "Super Claude Kit" "$INSTALL_DIR/.gitignore" 2>/dev/null; then
@@ -292,14 +357,12 @@ else
 fi
 echo ""
 
-# Add Super Claude Kit section to CLAUDE.md
 echo "Updating project instructions..."
 if [ -f "$INSTALL_DIR/CLAUDE.md" ]; then
   if ! grep -q "Super Claude Kit Integration" "$INSTALL_DIR/CLAUDE.md" 2>/dev/null; then
     echo "" >> "$INSTALL_DIR/CLAUDE.md"
     echo "---" >> "$INSTALL_DIR/CLAUDE.md"
     echo "" >> "$INSTALL_DIR/CLAUDE.md"
-    # Download template to .claude directory (not /tmp to avoid path issues)
     install_file "CLAUDE_TEMPLATE.md" ".claude/CLAUDE_TEMPLATE.tmp"
     cat "$INSTALL_DIR/.claude/CLAUDE_TEMPLATE.tmp" >> "$INSTALL_DIR/CLAUDE.md"
     rm "$INSTALL_DIR/.claude/CLAUDE_TEMPLATE.tmp"
@@ -313,7 +376,6 @@ else
 fi
 echo ""
 
-# Initialize capsule system
 echo "Initializing capsule system..."
 cd "$INSTALL_DIR"
 bash .claude/hooks/init-capsule-session.sh >/dev/null 2>&1 || true
@@ -326,7 +388,6 @@ else
 fi
 echo ""
 
-# Save version and installation timestamp
 echo "Saving version information..."
 MANIFEST_VERSION=$(echo "$MANIFEST" | python3 -c "import sys, json; print(json.load(sys.stdin)['version'])")
 echo "$MANIFEST_VERSION" > "$INSTALL_DIR/.claude/.super-claude-version"
@@ -341,18 +402,30 @@ echo ""
 echo "📊 Installed components:"
 echo "   • $HOOK_COUNT hooks"
 echo "   • $SCRIPT_COUNT utility scripts"
+if [ "$TOOL_COUNT" -gt 0 ]; then
+  echo "   • $TOOL_COUNT dependency tools"
+fi
 echo "   • $SKILL_COUNT skills"
 echo "   • $AGENT_COUNT sub-agents"
+if [ -f "$HOME/.claude/bin/dependency-scanner" ]; then
+  echo "   • Dependency scanner binary"
+fi
 echo "   • Documentation & templates"
 echo ""
 echo "🚀 Next steps:"
 echo "   1. Run tests: bash .claude/scripts/test-super-claude.sh"
 echo "   2. Start Claude Code in this directory"
 echo "   3. Look for: '🚀 Super Claude Kit ACTIVATED'"
+if [ -f "$HOME/.claude/bin/dependency-scanner" ]; then
+  echo "   4. Try dependency tools: .claude/tools/find-circular.sh"
+fi
 echo ""
 echo "📖 Documentation:"
 echo "   • Usage guide: .claude/docs/CAPSULE_USAGE_GUIDE.md"
 echo "   • Project instructions: CLAUDE.md"
 echo "   • View stats: bash .claude/scripts/show-stats.sh"
+if [ -f "$HOME/.claude/bin/dependency-scanner" ]; then
+  echo "   • Dependency tools: .claude/tools/ (NEW in v2.0)"
+fi
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

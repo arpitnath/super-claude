@@ -118,6 +118,34 @@ if [ -f "$DISCOVERY_LOG" ] && [ -s "$DISCOVERY_LOG" ]; then
 fi
 
 # ====================
+# TOOLS SECTION
+# ====================
+# List available custom tools
+TOOL_RUNNER_PATH=".claude/lib/tool-runner.sh"
+
+if [ -f "$TOOL_RUNNER_PATH" ]; then
+  # Source the tool runner
+  source "$TOOL_RUNNER_PATH"
+
+  # Discover tools
+  TOOLS_JSON=$(discover_tools 2>/dev/null)
+
+  if [ -n "$TOOLS_JSON" ] && [ "$TOOLS_JSON" != "[]" ]; then
+    echo "TOOLS{name,description,type}:" >> "$CAPSULE_TEMP"
+
+    # Extract tool info (name, description, type)
+    echo "$TOOLS_JSON" | jq -r '.[] | "\(.name),\(.description // "No description"),\(.type // "bash")"' 2>/dev/null | \
+      while IFS=',' read -r name desc type; do
+        # Truncate long descriptions
+        SHORT_DESC=$(echo "$desc" | cut -c1-60)
+        echo " $name,$SHORT_DESC,$type" >> "$CAPSULE_TEMP"
+      done
+
+    echo "" >> "$CAPSULE_TEMP"
+  fi
+fi
+
+# ====================
 # SESSION METADATA
 # ====================
 # Track basic session info

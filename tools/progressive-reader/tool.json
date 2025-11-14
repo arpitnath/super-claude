@@ -1,0 +1,69 @@
+{
+  "name": "progressive-reader",
+  "version": "2.0.0",
+  "description": "Semantic chunking reader for large files using tree-sitter AST parsing with TOON continuation tokens",
+  "type": "binary",
+  "entry": "bin/progressive-reader",
+  "languages": ["typescript", "javascript", "python", "go"],
+  "author": "Arpit Nath",
+  "keywords": ["progressive", "chunking", "tree-sitter", "ast", "semantic", "toon", "context-management"],
+  "usage": {
+    "command": "progressive-reader",
+    "flags": {
+      "--path": "File path to read (required unless --continue-file)",
+      "--chunk": "Specific chunk number to read (0-indexed)",
+      "--continue-file": "Path to continuation token file (TOON format)",
+      "--max-tokens": "Maximum tokens per chunk (default: 2000)",
+      "--list": "List all chunks without content",
+      "--version": "Show version",
+      "--help": "Show help message"
+    },
+    "examples": [
+      {
+        "description": "Read first chunk of a file",
+        "command": "progressive-reader --path src/auth.service.ts"
+      },
+      {
+        "description": "Read specific chunk",
+        "command": "progressive-reader --path src/auth.service.ts --chunk 2"
+      },
+      {
+        "description": "Continue from previous read",
+        "command": "progressive-reader --continue-file /tmp/continue.toon"
+      },
+      {
+        "description": "List all chunks (lightweight preview)",
+        "command": "progressive-reader --path src/auth.service.ts --list"
+      },
+      {
+        "description": "Adjust chunk size",
+        "command": "progressive-reader --path large-file.py --max-tokens 4000"
+      }
+    ]
+  },
+  "outputs": {
+    "format": "text with TOON continuation token",
+    "location": "/tmp/continue.toon",
+    "schema": {
+      "Output": "Formatted code chunk with line numbers and metadata",
+      "Token": "CONTINUE:file=... CONTINUE:offset=... CONTINUE:language=... CONTINUE:totalChunks=... CONTINUE:checksum=... ---"
+    }
+  },
+  "permissions": {
+    "read": ["**/*"],
+    "write": ["/tmp/continue.toon"],
+    "network": false
+  },
+  "autoRun": {
+    "enabled": false,
+    "triggers": [],
+    "condition": "manual"
+  },
+  "platforms": {
+    "darwin-arm64": "bin/progressive-reader-darwin-arm64",
+    "darwin-amd64": "Not yet available (requires cross-compilation setup)",
+    "linux-amd64": "Not yet available (requires cross-compilation setup)",
+    "windows-amd64": "Not yet available (requires cross-compilation setup)"
+  },
+  "notes": "Uses tree-sitter for semantic code parsing. Currently compiled for darwin-arm64. Other platforms require CGO cross-compilation toolchain."
+}

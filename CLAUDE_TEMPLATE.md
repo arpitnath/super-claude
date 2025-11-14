@@ -160,4 +160,130 @@ bash .claude/scripts/show-stats.sh
 
 ---
 
+## 🔍 Dependency Graph (NEW in v2.0)
+
+Super Claude Kit now understands your codebase structure through dependency analysis!
+
+### What is it?
+
+On session start, a dependency scanner analyzes your codebase and builds a complete graph of:
+- **Imports**: What each file imports
+- **Exports**: What each file exports (functions, classes, types)
+- **Reverse dependencies**: Who imports each file
+- **Circular dependencies**: Import cycles (A → B → C → A)
+- **Dead code**: Files not imported by anyone
+
+### Languages Supported
+
+- **TypeScript/JavaScript**: `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`
+- **Go**: `.go` files (uses Go's AST parser)
+- **Python**: `.py`, `.pyi` files
+
+### Available Tools
+
+All tools are in `.claude/tools/`:
+
+**1. Query Dependencies**
+```bash
+./.claude/tools/query-deps.sh <file-path>
+```
+Shows:
+- Files that import this file
+- Files that this file imports
+- All exported symbols
+
+**2. Impact Analysis**
+```bash
+./.claude/tools/impact-analysis.sh <file-path>
+```
+Shows:
+- Direct dependents (files that import this)
+- Transitive dependents (files that depend on dependents)
+- Risk assessment (LOW/MEDIUM/HIGH)
+- Recommendations before making changes
+
+**3. Find Circular Dependencies**
+```bash
+./.claude/tools/find-circular.sh
+```
+Detects import cycles and suggests fixes.
+
+**4. Find Dead Code**
+```bash
+./.claude/tools/find-dead-code.sh
+```
+Lists files not imported by anyone (potential unused code).
+
+### When to Use
+
+**Before Refactoring:**
+```
+User: "Refactor auth.ts"
+Claude: Let me check impact first...
+        [Runs: ./.claude/tools/impact-analysis.sh src/auth.ts]
+        "⚠️ 15 files depend on this. HIGH RISK."
+        "Review all dependents before making breaking changes."
+```
+
+**Before Deleting:**
+```
+User: "Can I delete this file?"
+Claude: [Runs: ./.claude/tools/query-deps.sh src/old-utils.ts]
+        "❌ No! 5 files still import it:"
+        "  • src/api/routes.ts"
+        "  • src/middleware/auth.ts"
+        "  ..."
+```
+
+**Understanding Architecture:**
+```
+User: "Why is this import failing?"
+Claude: [Runs: ./.claude/tools/find-circular.sh]
+        "Found circular dependency:"
+        "  auth.ts → user.ts → session.ts → auth.ts"
+        "💡 Extract shared code to break the cycle."
+```
+
+**Finding Unused Code:**
+```
+User: "Are there any unused files?"
+Claude: [Runs: ./.claude/tools/find-dead-code.sh]
+        "Found 3 potentially unused files:"
+        "  • src/legacy/old-auth.ts"
+        "  • src/utils/unused-helper.ts"
+        "  ..."
+```
+
+### How It Works
+
+1. **SessionStart**: Scanner runs automatically
+   - Parses all source files into AST
+   - Builds dependency graph
+   - Saves to `.claude/dep-graph.json`
+
+2. **During Session**: Claude uses query tools
+   - Read `.claude/dep-graph.json`
+   - Run bash scripts to query specific info
+   - Provide insights before making changes
+
+3. **Performance**: Very fast
+   - 100 files: <1 second
+   - 1000 files: <5 seconds
+   - 10000 files: <30 seconds
+
+### Best Practices
+
+**DO ✅**
+- Run impact analysis before major refactors
+- Check dependencies before deleting files
+- Use circular dependency detection when import fails
+- Review dead code findings before cleanup
+
+**DON'T ❌**
+- Ignore impact analysis warnings (HIGH RISK)
+- Delete files without checking query-deps first
+- Assume files are unused without verification
+
+---
+
 **Remember**: The capsule is your external memory. Trust it, use it, maintain it!
