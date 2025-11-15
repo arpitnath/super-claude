@@ -217,10 +217,27 @@ if [ -n "$GO_CMD" ]; then
 
   BUILT_TOOLS=0
 
+  # For remote mode, clone source to temp directory for building
+  BUILD_DIR="$SCRIPT_DIR"
+  TEMP_BUILD_DIR=""
+
+  if [ "$INSTALL_MODE" = "remote" ]; then
+    echo "  Downloading source code for building..."
+    TEMP_BUILD_DIR=$(mktemp -d)
+
+    if git clone --quiet --depth 1 --branch "$VERSION" "https://github.com/$GITHUB_REPO.git" "$TEMP_BUILD_DIR" 2>&1 | grep -v "^Cloning"; then
+      BUILD_DIR="$TEMP_BUILD_DIR"
+      echo "  ✅ Source code downloaded"
+    else
+      echo "  ❌ Failed to download source code"
+      BUILD_DIR=""
+    fi
+  fi
+
   # Build dependency-scanner
-  if [ "$INSTALL_MODE" = "local" ] && [ -d "$SCRIPT_DIR/tools/dependency-scanner" ]; then
+  if [ -n "$BUILD_DIR" ] && [ -d "$BUILD_DIR/tools/dependency-scanner" ]; then
     echo "  Building dependency-scanner..."
-    if (cd "$SCRIPT_DIR/tools/dependency-scanner" && "$GO_CMD" build -o "$HOME/.claude/bin/dependency-scanner" . >/dev/null 2>&1); then
+    if (cd "$BUILD_DIR/tools/dependency-scanner" && "$GO_CMD" build -o "$HOME/.claude/bin/dependency-scanner" . >/dev/null 2>&1); then
       chmod +x "$HOME/.claude/bin/dependency-scanner"
       SCANNER_VERSION=$("$HOME/.claude/bin/dependency-scanner" --version 2>&1 | head -1 || echo "unknown")
       echo "  ✅ dependency-scanner built: $SCANNER_VERSION"
@@ -228,14 +245,12 @@ if [ -n "$GO_CMD" ]; then
     else
       echo "  ❌ Failed to build dependency-scanner"
     fi
-  elif [ "$INSTALL_MODE" = "remote" ]; then
-    echo "  ⚠️  dependency-scanner requires local installation (Go source)"
   fi
 
   # Build progressive-reader
-  if [ "$INSTALL_MODE" = "local" ] && [ -d "$SCRIPT_DIR/tools/progressive-reader" ]; then
+  if [ -n "$BUILD_DIR" ] && [ -d "$BUILD_DIR/tools/progressive-reader" ]; then
     echo "  Building progressive-reader..."
-    if (cd "$SCRIPT_DIR/tools/progressive-reader" && "$GO_CMD" build -o "$HOME/.claude/bin/progressive-reader" cmd/main.go >/dev/null 2>&1); then
+    if (cd "$BUILD_DIR/tools/progressive-reader" && "$GO_CMD" build -o "$HOME/.claude/bin/progressive-reader" cmd/main.go >/dev/null 2>&1); then
       chmod +x "$HOME/.claude/bin/progressive-reader"
       READER_VERSION=$("$HOME/.claude/bin/progressive-reader" --version 2>&1 | head -1 || echo "unknown")
       echo "  ✅ progressive-reader built: $READER_VERSION"
@@ -243,8 +258,11 @@ if [ -n "$GO_CMD" ]; then
     else
       echo "  ❌ Failed to build progressive-reader"
     fi
-  elif [ "$INSTALL_MODE" = "remote" ]; then
-    echo "  ⚠️  progressive-reader requires local installation (Go source)"
+  fi
+
+  # Clean up temp directory
+  if [ -n "$TEMP_BUILD_DIR" ] && [ -d "$TEMP_BUILD_DIR" ]; then
+    rm -rf "$TEMP_BUILD_DIR"
   fi
 
   echo ""
