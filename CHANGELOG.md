@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.1] - 2025-11-15
+
+### Fixed
+
+- Hook JSON schema validation: Added missing `hookEventName: "SessionStart"` field
+- Dependency scanner installation: Changed binary downloads from GitHub releases to GitHub raw URLs
+- Install script stability: Binary downloads now work immediately without requiring release artifacts
+
+### Changed
+
+- Install script now auto-detects latest stable version from GitHub releases/tags
+- Defaults to tagged releases instead of master branch for production stability
+- Users can override version: `VERSION=master curl ... | bash` for development
+- Improved error messages during dependency scanner installation
+
+### Notes
+
+- Fully backward compatible with v2.0.0
+- No user action required for existing installations
+- New installs automatically get latest stable version
+
+---
+
 ## [2.0.0] - 2025-11-13
 
 ### Added
