@@ -40,7 +40,7 @@ echo ""
 
 echo "1. Version and Help Tests"
 echo "----------------------------------------"
-test_case "Version flag" "$BINARY --version" "progressive-reader v2.0.0"
+test_case "Version flag" "$BINARY --version" "progressive-reader v2.0.2"
 test_case "Help flag" "$BINARY --help" "progressive-reader - Semantic chunking reader"
 echo ""
 
