@@ -48,9 +48,7 @@
       "impact-analysis",
       "find-circular",
       "find-dead-code",
-      "progressive-reader-wrapper",
-      "dependency-scanner",
-      "progressive-reader"
+      "progressive-reader-wrapper"
     ],
     "skills": [
       "context-saver",
