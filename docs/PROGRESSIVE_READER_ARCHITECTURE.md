@@ -7,7 +7,6 @@ Progressive Reader is a system primitive for Super Claude Kit that enables effic
 **Implementation**: Go-based tool with tree-sitter bindings
 **Status**: Implemented in Super Claude Kit v2.0
 **Binary Location**: `~/.claude/bin/progressive-reader`
-**Source**: Adapted from Orpheus CLI progressive_reader.go
 
 ---
 
