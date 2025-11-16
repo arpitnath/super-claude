@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <code>bash <(curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install)</code>
+  <code>curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install | bash</code>
 </p>
 
 <p align="center">
@@ -38,7 +38,7 @@
 Run the one-line installer:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install)
+curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install | bash
 ```
 
 That's it! Restart Claude Code and you'll see the context capsule on every session.
