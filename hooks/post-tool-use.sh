@@ -57,22 +57,25 @@ case "$TOOL_NAME" in
 
   "TodoWrite")
     if [ -n "$TOOL_INPUT" ]; then
-      if TODOS=$(echo "$TOOL_INPUT" | python3 -c "
+      # Clear existing tasks and log all new ones
+      > .claude/current_tasks.log
+
+      echo "$TOOL_INPUT" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
     todos = data.get('todos', [])
     for todo in todos:
-        if todo.get('status') == 'in_progress':
-            print(todo.get('content', ''))
-            break
+        status = todo.get('status', 'unknown')
+        content = todo.get('content', '')
+        print(f'{status}|{content}')
 except:
     pass
-" 2>/dev/null); then
-        if [ -n "$TODOS" ]; then
-          ./.claude/hooks/log-task.sh "in_progress" "$TODOS" 2>/dev/null || true
+" 2>/dev/null | while IFS='|' read -r status content; do
+        if [ -n "$content" ]; then
+          echo "${status}|${content}" >> .claude/current_tasks.log
         fi
-      fi
+      done
     fi
     ;;
 esac
