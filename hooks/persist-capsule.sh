@@ -12,14 +12,23 @@ TIMESTAMP=$(date +%s)
 SESSION_START=$(cat .claude/session_start.txt 2>/dev/null || echo "$TIMESTAMP")
 SESSION_DURATION=$((TIMESTAMP - SESSION_START))
 
+# Get git info if available
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "none")
+  GIT_HEAD=$(git rev-parse --short HEAD 2>/dev/null || echo "none")
+else
+  GIT_BRANCH="none"
+  GIT_HEAD="none"
+fi
+
 # Create persistence object
 cat > "$PERSIST_FILE" << EOF
 {
   "last_session": {
     "ended_at": $TIMESTAMP,
     "duration_seconds": $SESSION_DURATION,
-    "branch": "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")",
-    "head": "$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+    "branch": "$GIT_BRANCH",
+    "head": "$GIT_HEAD"
   },
   "discoveries": [
 EOF

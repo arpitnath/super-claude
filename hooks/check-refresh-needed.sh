@@ -12,8 +12,13 @@ TIMESTAMP=$(date +%s)
 calculate_state_hash() {
   local state_string=""
 
-  # Git state
-  state_string+=$(git status --porcelain 2>/dev/null | md5 -q 2>/dev/null || echo "")
+  # Git state (if available)
+  if git rev-parse --git-dir > /dev/null 2>&1; then
+    state_string+=$(git status --porcelain 2>/dev/null | md5 -q 2>/dev/null || echo "")
+  else
+    # Fallback: use timestamp of last modified file
+    state_string+=$(find . -type f -not -path "./.claude/*" -not -path "./.git/*" -not -path "./node_modules/*" -printf "%T@\n" 2>/dev/null | sort -n | tail -1 || echo "0")
+  fi
 
   # File log size (number of lines)
   if [ -f ".claude/session_files.log" ]; then

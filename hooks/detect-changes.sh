@@ -14,10 +14,10 @@ mkdir -p .claude
 touch "$SNAPSHOT_FILE"
 
 # ============================================
-# GIT-BASED FILE DETECTION
+# GIT-BASED FILE DETECTION (if available)
 # ============================================
 # Detect files that changed since last snapshot
-if [ -f "$SNAPSHOT_FILE" ]; then
+if git rev-parse --git-dir > /dev/null 2>&1 && [ -f "$SNAPSHOT_FILE" ]; then
   # Get current git status
   CURRENT_STATUS=$(git status --porcelain 2>/dev/null || echo "")
   LAST_STATUS=$(cat "$SNAPSHOT_FILE" 2>/dev/null || echo "")
@@ -52,9 +52,12 @@ if [ -f "$SNAPSHOT_FILE" ]; then
 
   # Save current status as snapshot
   echo "$CURRENT_STATUS" > "$SNAPSHOT_FILE"
-else
-  # First run, just save snapshot
+elif git rev-parse --git-dir > /dev/null 2>&1; then
+  # First run with git, save snapshot
   git status --porcelain 2>/dev/null > "$SNAPSHOT_FILE" || touch "$SNAPSHOT_FILE"
+else
+  # No git available, mark as initialized
+  touch "$SNAPSHOT_FILE"
 fi
 
 # ============================================

@@ -40,7 +40,10 @@ while IFS= read -r line; do
 
     case "$SECTION" in
       "GIT")
-        echo "<git-state>"
+        # Only show git-state if data exists (git available)
+        if grep -q "^GIT{" "$CAPSULE_FILE" 2>/dev/null; then
+          echo "<git-state>"
+        fi
         ;;
       "FILES")
         echo "<files-in-context>"
