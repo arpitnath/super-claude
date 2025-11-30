@@ -40,6 +40,9 @@
     ],
     "scripts": [
       "show-stats.sh",
+      "show-stats-dashboard.sh",
+      "show-deps-tree.sh",
+      "show-capsule-visual.sh",
       "test-super-claude.sh",
       "update-super-claude.sh"
     ],

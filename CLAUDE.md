@@ -183,6 +183,27 @@ BEFORE asking about current task → Check capsule (Current Tasks)
     </never-use>
   </code-search>
 
+  <large-file-reading category="always-use" threshold="50KB">
+    <tool name="progressive-reader" reason="token-efficient-semantic-chunking">
+      <workflow>
+        <step1>Preview structure: progressive-reader --path &lt;file&gt; --list</step1>
+        <step2>Read relevant chunk: progressive-reader --path &lt;file&gt; --chunk N</step2>
+        <step3>Continue if needed: progressive-reader --continue-file /tmp/continue.toon</step3>
+      </workflow>
+
+      <use-case>Files larger than 50KB</use-case>
+      <languages>TypeScript, JavaScript, Python, Go</languages>
+      <benefit>Saves 75-97% tokens via semantic AST-aware chunking</benefit>
+      <proven-savings>79% reduction on 51KB Python file (13,174 → 2,659 tokens)</proven-savings>
+    </tool>
+
+    <never-use tool="Read" reason="token-wasteful-and-truncation-risk">
+      <reason priority="high">Loads entire file even if you need small section</reason>
+      <reason priority="high">May truncate large files or hit context limits</reason>
+      <reason priority="medium">No semantic awareness - splits at arbitrary line numbers</reason>
+    </never-use>
+  </large-file-reading>
+
   <task-tool-allowed-uses>
     <allowed priority="high">
       <use-case>Complex architectural questions requiring analysis</use-case>

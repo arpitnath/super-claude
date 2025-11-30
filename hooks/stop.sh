@@ -6,14 +6,30 @@
 
 set -euo pipefail
 
+# Find .claude directory by searching parent directories
+find_claude_dir() {
+  local current_dir="$PWD"
+  while [ "$current_dir" != "/" ]; do
+    if [ -d "$current_dir/.claude" ]; then
+      echo "$current_dir/.claude"
+      return 0
+    fi
+    current_dir=$(dirname "$current_dir")
+  done
+  echo ".claude"
+  return 1
+}
+
+CLAUDE_DIR=$(find_claude_dir)
+
 # Tracking files
-QUALITY_CHECK_STATE=".claude/quality_check_state.txt"
-SUGGESTIONS_SHOWN=".claude/quality_suggestions_shown.log"
-FILE_LOG=".claude/session_files.log"
-DISCOVERY_LOG=".claude/session_discoveries.log"
+QUALITY_CHECK_STATE="$CLAUDE_DIR/quality_check_state.txt"
+SUGGESTIONS_SHOWN="$CLAUDE_DIR/quality_suggestions_shown.log"
+FILE_LOG="$CLAUDE_DIR/session_files.log"
+DISCOVERY_LOG="$CLAUDE_DIR/session_discoveries.log"
 
 # Create files if needed
-mkdir -p .claude
+mkdir -p "$CLAUDE_DIR"
 touch "$QUALITY_CHECK_STATE"
 touch "$SUGGESTIONS_SHOWN"
 
@@ -46,7 +62,7 @@ echo "$CURRENT_FILES,$CURRENT_DISCOVERIES" > "$QUALITY_CHECK_STATE"
 if [ $NEW_FILES -ge 3 ] && [ $NEW_DISCOVERIES -eq 0 ]; then
   echo ""
   echo "[QUALITY TIP] Accessed $NEW_FILES files but logged 0 discoveries"
-  echo "Consider: ./.claude/hooks/log-discovery.sh \"<category>\" \"<finding>\""
+  echo "Consider: bash $CLAUDE_DIR/hooks/log-discovery.sh \"<category>\" \"<finding>\""
   echo ""
 
   # Mark as shown

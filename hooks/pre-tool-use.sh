@@ -11,10 +11,7 @@ set -euo pipefail
 TOOL_NAME="${1:-}"
 TOOL_INPUT="${2:-}"
 
-# ============================================================
-# PHASE 1: TASK TOOL INTERCEPTION
-# Detect dependency queries and enforce query-deps usage
-# ============================================================
+# Task tool interception - enforce dependency tools
 if [ "$TOOL_NAME" == "Task" ]; then
   # Extract prompt from Task tool input
   TASK_PROMPT=$(echo "$TOOL_INPUT" | python3 -c "import sys, json; print(json.load(sys.stdin).get('prompt', ''))" 2>/dev/null || echo "")
@@ -74,15 +71,40 @@ EOF
   exit 0
 fi
 
-# ============================================================
-# PHASE 2: READ TOOL MONITORING + AUTO-LOGGING
-# ============================================================
+# Read tool monitoring and large file detection
 if [ "$TOOL_NAME" != "Read" ]; then
   exit 0
 fi
 
-# Extract file path from JSON input
 FILE_PATH=$(echo "$TOOL_INPUT" | python3 -c "import sys, json; print(json.load(sys.stdin).get('file_path', ''))" 2>/dev/null || echo "")
+
+# Check file size and recommend progressive-reader for large files
+if [ -n "$FILE_PATH" ] && [ -f "$FILE_PATH" ]; then
+  FILE_SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo "0")
+  FILE_SIZE_KB=$((FILE_SIZE / 1024))
+
+  if [ "$FILE_SIZE" -gt 51200 ]; then  # 50KB threshold
+    cat << EOF
+
+<tool-enforcement type="large-file-reading">
+  <warning>File size: ${FILE_SIZE_KB}KB exceeds 50KB threshold</warning>
+
+  <dont-use tool="Read" reason="token-wasteful">
+    - Loads entire file even if you need small section
+    - No semantic awareness - may truncate or split mid-function
+    - Token cost: ~$((FILE_SIZE / 4)) tokens for full file
+  </dont-use>
+
+  <use-instead tool="progressive-reader">
+    <step1>Preview chunks: progressive-reader --path ${FILE_PATH} --list</step1>
+    <step2>Read specific chunk: progressive-reader --path ${FILE_PATH} --chunk N</step2>
+    <benefit>Saves 75-97% tokens via semantic chunking</benefit>
+  </use-instead>
+</tool-enforcement>
+
+EOF
+  fi
+fi
 
 if [ -z "$FILE_PATH" ]; then
   exit 0
@@ -130,10 +152,7 @@ fi
 # Record this read attempt
 echo "$FILE_PATH,$CURRENT_TIME" >> "$RECENT_READS_LOG"
 
-# ============================================================
-# AUTO-LOG TO CAPSULE
-# Automatically log file access to capsule for context tracking
-# ============================================================
+# Auto-log file access to capsule
 if [ -x ".claude/hooks/log-file-access.sh" ]; then
   # Auto-log this read operation (suppress output to avoid noise)
   .claude/hooks/log-file-access.sh "$FILE_PATH" "read" > /dev/null 2>&1 || true

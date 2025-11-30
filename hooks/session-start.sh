@@ -37,11 +37,15 @@ fi
   # Load recent discoveries from exploration journal
   ./.claude/hooks/load-from-journal.sh 2>/dev/null
 
-  # 1. Show current git status
+  # 1. Show current work context
   echo "📊 Current Work Context:"
-  BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
-  echo "   Branch: $BRANCH"
-  git status -sb 2>/dev/null | head -5 || echo "   Not in git repo"
+  if git rev-parse --git-dir > /dev/null 2>&1; then
+    BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+    echo "   Branch: $BRANCH"
+    git status -sb 2>/dev/null | head -5
+  else
+    echo "   No version control (file-based change tracking active)"
+  fi
   echo ""
 
   # 2. Build dependency graph (v2.0 feature)
@@ -57,19 +61,22 @@ fi
   fi
 
   # 3. Detect recent changes (last 24 hours)
-  echo "🔄 Recent Changes (last 24h):"
-  RECENT_COMMITS=$(git log --oneline --since="24 hours ago" --no-merges 2>/dev/null)
-  if [ -n "$RECENT_COMMITS" ]; then
-      echo "$RECENT_COMMITS" | head -5
-  else
-      echo "   No recent commits"
-  fi
-  echo ""
+  if git rev-parse --git-dir > /dev/null 2>&1; then
+    echo "🔄 Recent Changes (last 24h):"
+    RECENT_COMMITS=$(git log --oneline --since="24 hours ago" --no-merges 2>/dev/null)
+    if [ -n "$RECENT_COMMITS" ]; then
+        echo "$RECENT_COMMITS" | head -5
+    else
+        echo "   No recent commits"
+    fi
+    echo ""
 
-  # 4. Show active branches with context
-  echo "🌿 Active Work:"
-  echo "   ✅ On $BRANCH"
-  echo ""
+    # 4. Show active branches with context
+    echo "🌿 Active Work:"
+    BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
+    echo "   ✅ On $BRANCH"
+    echo ""
+  fi
 
   # 5. Load Exploration Journal (Super Claude Kit MEMORY)
   if [ -d "docs/exploration" ] && [ "$(ls -A docs/exploration 2>/dev/null)" ]; then

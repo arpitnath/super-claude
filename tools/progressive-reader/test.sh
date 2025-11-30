@@ -108,6 +108,27 @@ test_case "Missing file fails" "$BINARY --path nonexistent.ts 2>&1" "Error:"
 test_case "No path argument fails" "$BINARY 2>&1" "progressive-reader - Semantic chunking reader"
 echo ""
 
+echo "9. Oversized Node Handling (Regression Test)"
+echo "----------------------------------------"
+test_case "Oversized export array splits into multiple chunks" "$BINARY --path testdata/typescript/oversized-export.ts --list" "Total chunks: [1-9][0-9]*"
+test_case "Oversized file has multiple chunks listed" "$BINARY --path testdata/typescript/oversized-export.ts --list" "Chunk [2-9]/"
+echo ""
+
+echo "10. Large File Support (50KB+)"
+echo "----------------------------------------"
+test_case "Large file creates multiple chunks" "$BINARY --path testdata/typescript/large-file.ts --list" "Total chunks: [1-9][0-9]"
+test_case "Large file shows chunk navigation" "$BINARY --path testdata/typescript/large-file.ts --list" "Chunk 10/"
+echo ""
+
+echo "11. Multi-Chunk Navigation"
+echo "----------------------------------------"
+rm -f /tmp/continue.toon
+test_case "Read chunk 0 creates continuation token" "$BINARY --path testdata/typescript/large-file.ts --chunk 0 > /dev/null && test -f /tmp/continue.toon && echo 'token created'" "token created"
+test_case "Continuation token has correct format" "cat /tmp/continue.toon" "CONTINUE:file="
+test_case "Continue to next chunk" "$BINARY --continue-file /tmp/continue.toon" "Chunk [2-9]/"
+rm -f /tmp/continue.toon
+echo ""
+
 echo "========================================"
 echo "Test Results"
 echo "========================================"

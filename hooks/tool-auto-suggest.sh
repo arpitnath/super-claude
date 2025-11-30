@@ -43,6 +43,10 @@ if echo "$PROMPT_LOWER" | grep -qE '(architecture|structure|organization|how.*or
     SUGGESTIONS+=("dependency-scanner:Analyze codebase structure")
 fi
 
+if echo "$PROMPT_LOWER" | grep -qE '(large file|big file|huge file|read.*entire|bundle|compiled|minified)'; then
+    SUGGESTIONS+=("progressive-reader:Read large files efficiently in semantic chunks")
+fi
+
 if [ ${#SUGGESTIONS[@]} -gt 0 ]; then
     echo ""
     echo "<enforcement type=\"super-claude-kit-tools\">"

@@ -33,7 +33,12 @@ echo "0" > "$MESSAGE_COUNT_FILE"
 # Clear discovery log (start fresh each session)
 > "$DISCOVERY_LOG"
 
-# Initialize git snapshot for change detection
-git status --porcelain 2>/dev/null > "$SNAPSHOT_FILE" || touch "$SNAPSHOT_FILE"
+# Initialize git snapshot for change detection (if git available)
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  git status --porcelain 2>/dev/null > "$SNAPSHOT_FILE" || touch "$SNAPSHOT_FILE"
+else
+  # No git - create empty snapshot (mtime-based detection will be used)
+  touch "$SNAPSHOT_FILE"
+fi
 
 echo "✓ Capsule session initialized" >&2

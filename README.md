@@ -279,8 +279,12 @@ All agents are sandboxed and require explicit permission for write operations.
 - **Claude Code** (Desktop CLI or VSCode extension)
 - **macOS** or **Linux** (Windows WSL supported)
 - **Go 1.23+** (auto-installed if not present)
-- **Git** (recommended for branch-aware features)
 - **Bash 4.0+**
+
+**Optional (for enhanced features):**
+- **Git** - Provides branch tracking and git-aware change detection
+  - Without git: Uses file modification time for change detection
+  - All core features work without git
 
 ---
 
