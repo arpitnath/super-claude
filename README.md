@@ -26,7 +26,7 @@
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-Compatible-blue.svg" alt="Claude Code"></a>
-  <a href="https://github.com/arpitnath/super-claude-kit"><img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version"></a>
+  <a href="https://github.com/arpitnath/super-claude-kit"><img src="https://img.shields.io/badge/version-1.1.0-blue.svg" alt="Version"></a>
 </p>
 
 ---

@@ -11,7 +11,7 @@ import (
 	"github.com/arpitnath/super-claude-kit/tools/progressive-reader/pkg/token"
 )
 
-const version = "1.0.0"
+const version = "1.1.0"
 const defaultTokenPath = "/tmp/continue.toon"
 
 func main() {
