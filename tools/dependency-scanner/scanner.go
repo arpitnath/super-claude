@@ -13,6 +13,7 @@ type Scanner struct {
 	parser     *Parser
 	graph      *DependencyGraph
 	verbose    bool
+	moduleName string  // Go module name from go.mod
 }
 
 // NewScanner creates a new scanner instance
@@ -33,11 +34,29 @@ func NewScanner(rootPath string, verbose bool) (*Scanner, error) {
 		return nil, fmt.Errorf("failed to create parser: %w", err)
 	}
 
+	// Try to load Go module name if go.mod exists
+	moduleName := ""
+	goModPath := filepath.Join(rootPath, "go.mod")
+	if content, err := os.ReadFile(goModPath); err == nil {
+		lines := strings.Split(string(content), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "module ") {
+				moduleName = strings.TrimSpace(strings.TrimPrefix(line, "module"))
+				if verbose {
+					printf("Detected Go module: %s\n", moduleName)
+				}
+				break
+			}
+		}
+	}
+
 	return &Scanner{
-		rootPath: rootPath,
-		parser:   parser,
-		graph:    NewDependencyGraph(),
-		verbose:  verbose,
+		rootPath:   rootPath,
+		parser:     parser,
+		graph:      NewDependencyGraph(),
+		verbose:    verbose,
+		moduleName: moduleName,
 	}, nil
 }
 
@@ -175,16 +194,27 @@ func (s *Scanner) buildReverseImports() {
 	}
 }
 
-// resolveImport resolves an import path to an absolute file path
 func (s *Scanner) resolveImport(fromFile, importPath string) string {
-	// Skip external packages
+	if s.moduleName != "" && strings.HasPrefix(importPath, s.moduleName+"/") {
+		relPath := strings.TrimPrefix(importPath, s.moduleName+"/")
+		packageDir := filepath.Join(s.rootPath, relPath)
+
+		if files, err := filepath.Glob(filepath.Join(packageDir, "*.go")); err == nil && len(files) > 0 {
+			return files[0]
+		}
+
+		if _, err := os.Stat(packageDir + ".go"); err == nil {
+			return packageDir + ".go"
+		}
+
+		return ""
+	}
+
 	if !strings.HasPrefix(importPath, ".") && !strings.HasPrefix(importPath, "/") {
 		return ""
 	}
 
 	fromDir := filepath.Dir(fromFile)
-
-	// Handle relative imports
 	resolved := filepath.Join(fromDir, importPath)
 
 	// Try different extensions
