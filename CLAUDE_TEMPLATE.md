@@ -192,26 +192,80 @@ Only discoveries require manual logging - everything else is automatic!
     </never-use>
   </code-search>
 
-  <large-file-reading category="always-use" threshold="50KB">
-    <tool name="progressive-reader" reason="token-efficient-semantic-chunking">
+  <large-file-navigation category="use-for-structure" threshold="50KB">
+    <tool name="progressive-reader" reason="file-navigation-and-structure-discovery">
+      <description>
+        Progressive-reader is a NAVIGATION TOOL for large files. Use it to understand
+        file structure BEFORE reading, then read only what you need.
+      </description>
+
+      <primary-value feature="--list">
+        The --list command shows file structure WITHOUT reading content:
+        - Shows all functions/classes with their chunk numbers
+        - Each chunk has a summary of what it contains
+        - ~500 tokens to see entire file structure (vs ~48,000 for full read)
+        - BETTER THAN GREP for understanding "what's in this file?"
+      </primary-value>
+
       <workflow>
-        <step1>Preview structure: progressive-reader --path &lt;file&gt; --list</step1>
-        <step2>Read relevant chunk: progressive-reader --path &lt;file&gt; --chunk N</step2>
-        <step3>Continue if needed: progressive-reader --continue-file /tmp/continue.toon</step3>
+        <step1>Discover structure: .claude/bin/progressive-reader --path &lt;file&gt; --list</step1>
+        <step2>Find relevant chunks from function/class names in the list</step2>
+        <step3>Read specific chunk: .claude/bin/progressive-reader --path &lt;file&gt; --chunk N</step3>
+        <step4>Continue if needed: .claude/bin/progressive-reader --continue-file /tmp/continue.toon</step4>
       </workflow>
 
-      <use-case>Files larger than 50KB</use-case>
-      <languages>TypeScript, JavaScript, Python, Go</languages>
-      <benefit>Saves 75-97% tokens via semantic AST-aware chunking</benefit>
-      <proven-savings>79% reduction on 51KB Python file (13,174 → 2,659 tokens)</proven-savings>
+      <when-to-use>
+        <case>Understanding file structure - "What functions are in this file?"</case>
+        <case>Finding specific functionality - "Which part handles authentication?"</case>
+        <case>Adding new code - "Show me similar functions so I can follow the pattern"</case>
+        <case>Targeted reading - "I need to understand just the login function"</case>
+        <case>Context-limited sessions - nearing token limits, need efficient reading</case>
+      </when-to-use>
+
+      <when-grep-is-fine>
+        <case>Finding specific keyword occurrences</case>
+        <case>Searching for error messages or strings</case>
+        <case>Quick lookups where you know what you're searching for</case>
+      </when-grep-is-fine>
+
+      <languages>TypeScript, JavaScript, Python, Go (full AST parsing)</languages>
+      <fallback>Other languages use line-based chunking (still useful, less intelligent)</fallback>
+      <token-savings>75-97% vs full file read</token-savings>
     </tool>
 
-    <never-use tool="Read" reason="token-wasteful-and-truncation-risk">
-      <reason priority="high">Loads entire file even if you need small section</reason>
-      <reason priority="high">May truncate large files or hit context limits</reason>
-      <reason priority="medium">No semantic awareness - splits at arbitrary line numbers</reason>
-    </never-use>
-  </large-file-reading>
+    <guidance for="Read-tool">
+      <use-read-when>File is under 50KB OR you genuinely need the entire file</use-read-when>
+      <use-progressive-when>File is large AND you need structure/specific sections</use-progressive-when>
+      <note>PreToolUse hook will warn if you try to Read a file over 50KB</note>
+    </guidance>
+
+    <mandatory-file-size-check priority="CRITICAL">
+      <rule>BEFORE using Read tool, ALWAYS check file size first:</rule>
+      <check>Run: wc -c &lt;file&gt; | awk '{print int($1/1024)"KB"}'</check>
+
+      <decision>
+        <if-under-50KB>Use Read tool normally</if-under-50KB>
+        <if-over-50KB>STOP. Use progressive-reader instead:</if-over-50KB>
+      </decision>
+
+      <progressive-reader-command>
+        <list>.claude/bin/progressive-reader --path &lt;file&gt; --list</list>
+        <read-chunk>.claude/bin/progressive-reader --path &lt;file&gt; --chunk N</read-chunk>
+      </progressive-reader-command>
+
+      <why-this-matters>
+        Files over 50KB (~12,500+ tokens) cause MaxFileReadTokenExceededError.
+        Each failed Read attempt wastes tokens. Check size FIRST.
+      </why-this-matters>
+    </mandatory-file-size-check>
+
+    <error-recovery priority="CRITICAL">
+      <trigger>MaxFileReadTokenExceededError</trigger>
+      <action>IMMEDIATELY stop using Read tool on this file</action>
+      <solution>Switch to: .claude/bin/progressive-reader --path &lt;file&gt; --list</solution>
+      <do-not>Do NOT retry Read with offset/limit - use progressive-reader</do-not>
+    </error-recovery>
+  </large-file-navigation>
 
   <task-tool-allowed-uses>
     <allowed priority="high">
