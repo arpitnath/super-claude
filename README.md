@@ -3,11 +3,13 @@
 </p>
 
 <p align="center">
-  <img src="./.github/hero.gif" alt="Super Claude Kit" width="100%" />
+  <img src="./.github/super_claude_kit.png" alt="Super Claude Kit" width="100%" />
 </p>
 
 <p align="center">
-  <code>curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install | bash</code>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-Compatible-blue.svg" alt="Claude Code"></a>
+  <a href="https://github.com/arpitnath/super-claude-kit"><img src="https://img.shields.io/badge/version-1.1.1-blue.svg" alt="Version"></a>
 </p>
 
 <p align="center">
@@ -19,12 +21,19 @@
   Files, tasks, discoveries — all restored instantly.
 </p>
 
+<p align="center">
+  <code>curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install | bash</code>
+</p>
+
+
+
+
+
+
 
 
 <p align="center">
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-Compatible-blue.svg" alt="Claude Code"></a>
-  <a href="https://github.com/arpitnath/super-claude-kit"><img src="https://img.shields.io/badge/version-1.1.1-blue.svg" alt="Version"></a>
+  <img src="./.github/hero.gif" alt="Super Claude Kit" width="100%" />
 </p>
 
 ---
@@ -64,9 +73,9 @@ The installer will:
 ### What you get immediately
 
 <p align="center">
-  
+
   <img src="./.github/stats.png" alt="Session Resume" width="100%" />
-  
+
 </p>
 
 **After installation, Claude Code will:**
@@ -141,9 +150,9 @@ The capsule uses TOON format for **52% token reduction** compared to JSON.
 ### 🔗 Dependency Intelligence
 
 <p align="center">
-  
+
   <img src="./.github/dependency-graph.png" alt="Dependency Graph" width="100%" />
-  
+
 </p>
 
 **Know what breaks before you break it.**
