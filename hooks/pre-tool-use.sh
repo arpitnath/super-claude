@@ -5,11 +5,16 @@
 # 2. Enforces Claude Capsule Kit tools for dependency analysis
 # 3. Auto-logs file access to capsule
 # Runs BEFORE each tool call
+# Claude Code passes arguments via stdin as JSON, NOT positional args
 
 set -euo pipefail
 
-TOOL_NAME="${1:-}"
-TOOL_INPUT="${2:-}"
+# Read JSON from stdin (Claude Code's hook protocol)
+INPUT_JSON=$(cat)
+
+# Extract fields from JSON using python3
+TOOL_NAME=$(echo "$INPUT_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('tool_name', ''))" 2>/dev/null || echo "")
+TOOL_INPUT=$(echo "$INPUT_JSON" | python3 -c "import sys, json; import json as j; print(j.dumps(json.load(sys.stdin).get('tool_input', {})))" 2>/dev/null || echo "{}")
 
 # Task tool interception - enforce dependency tools
 if [ "$TOOL_NAME" == "Task" ]; then

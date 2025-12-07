@@ -1,10 +1,16 @@
 #!/bin/bash
+# PostToolUse Hook - Auto-logs file operations and task updates
+# Claude Code passes arguments via stdin as JSON, NOT positional args
 
 set -euo pipefail
 
-TOOL_NAME="${1:-}"
-TOOL_INPUT="${2:-}"
-TOOL_OUTPUT="${3:-}"
+# Read JSON from stdin (Claude Code's hook protocol)
+INPUT_JSON=$(cat)
+
+# Extract fields from JSON using python3
+TOOL_NAME=$(echo "$INPUT_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('tool_name', ''))" 2>/dev/null || echo "")
+TOOL_INPUT=$(echo "$INPUT_JSON" | python3 -c "import sys, json; import json as j; print(j.dumps(json.load(sys.stdin).get('tool_input', {})))" 2>/dev/null || echo "{}")
+TOOL_OUTPUT=$(echo "$INPUT_JSON" | python3 -c "import sys, json; import json as j; r = json.load(sys.stdin).get('tool_response', {}); print(j.dumps(r) if isinstance(r, dict) else str(r))" 2>/dev/null || echo "")
 
 if [ -z "$TOOL_NAME" ]; then
   exit 0
@@ -63,25 +69,21 @@ case "$TOOL_NAME" in
 
   "TodoWrite")
     if [ -n "$TOOL_INPUT" ]; then
-      # Clear existing tasks and log all new ones
-      > .claude/current_tasks.log
-
+      # Clear existing tasks and write new ones directly from Python
       echo "$TOOL_INPUT" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
     todos = data.get('todos', [])
-    for todo in todos:
-        status = todo.get('status', 'unknown')
-        content = todo.get('content', '')
-        print(f'{status}|{content}')
-except:
+    with open('.claude/current_tasks.log', 'w') as f:
+        for todo in todos:
+            status = todo.get('status', 'unknown')
+            content = todo.get('content', '')
+            if content:
+                f.write(f'{status}|{content}\n')
+except Exception as e:
     pass
-" 2>/dev/null | while IFS='|' read -r status content; do
-        if [ -n "$content" ]; then
-          echo "${status}|${content}" >> .claude/current_tasks.log
-        fi
-      done
+" 2>/dev/null || true
     fi
     ;;
 esac
