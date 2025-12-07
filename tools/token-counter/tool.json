@@ -1,0 +1,40 @@
+{
+  "name": "token-counter",
+  "version": "1.0.0",
+  "description": "Count tokens using Claude's actual tokenizer from Hugging Face",
+  "type": "python",
+  "entry": "token-counter.py",
+  "author": "Arpit Nath",
+  "keywords": ["tokens", "counting", "validation", "progressive-reader"],
+  "usage": {
+    "command": "python3 token-counter.py <file>",
+    "args": {
+      "file": "Path to the file to count tokens",
+      "--compare-chunks": "Compare full file vs progressive-reader chunks",
+      "--install": "Install dependencies (transformers package)"
+    },
+    "examples": [
+      {
+        "description": "Count tokens in a file",
+        "command": "python3 token-counter.py src/large-file.ts"
+      },
+      {
+        "description": "Compare with progressive-reader chunks",
+        "command": "python3 token-counter.py src/large-file.ts --compare-chunks"
+      },
+      {
+        "description": "Validate specific chunks used",
+        "command": "python3 token-counter.py src/large-file.ts 19,20,21"
+      }
+    ]
+  },
+  "requires": {
+    "python": "3.8+",
+    "packages": ["transformers"]
+  },
+  "permissions": {
+    "read": ["*"],
+    "write": [],
+    "network": true
+  }
+}
