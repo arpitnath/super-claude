@@ -198,7 +198,9 @@ Built-in dependency scanner analyzes your codebase:
 See the difference when working with large files (187KB React source):
 
 <p align="center">
-  <img src="./.github/progressive-reader-demo.png" alt="Progressive Reader Comparison" width="100%" />
+  <video src="https://github.com/user-attachments/assets/6ed49428-ce3e-48d5-8e07-0d0ab702071b" controls width="100%">
+    Progressive Reader Comparison
+  </video>
 </p>
 
 | Metric | Vanilla Claude Code | Super Claude Kit |
