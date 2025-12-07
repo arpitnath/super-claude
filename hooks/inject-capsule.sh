@@ -1,6 +1,7 @@
 #!/bin/bash
 # Context Capsule Injection Script
 # Injects capsule into system context with hash-based change detection
+# Outputs JSON format for Claude Code compatibility
 
 set -euo pipefail
 
@@ -24,131 +25,105 @@ if [ -f "$HASH_FILE" ]; then
   fi
 fi
 
-# Capsule changed or first injection - display it
-echo ""
-echo "<context-capsule updated=\"true\">"
+# Initialize JSON arrays
+GIT_JSON=""
+FILES_JSON="[]"
+TASKS_JSON="[]"
+SUBAGENTS_JSON="[]"
+DISCOVERIES_JSON="[]"
+META_JSON=""
+SECTION=""
 
-# Parse and display capsule sections in human-readable format
+# Helper function to escape JSON strings
+escape_json() {
+  echo "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr -d '\n'
+}
+
+# Helper function to format age
+format_age() {
+  local AGE=$1
+  if [ "$AGE" -lt 60 ]; then
+    echo "${AGE}s ago"
+  elif [ "$AGE" -lt 3600 ]; then
+    echo "$((AGE / 60))m ago"
+  else
+    echo "$((AGE / 3600))h ago"
+  fi
+}
+
+# Parse capsule file
 while IFS= read -r line; do
-  # Skip empty lines
   [ -z "$line" ] && continue
 
   # Parse section headers
   if echo "$line" | grep -q "^[A-Z][A-Z]*{"; then
     SECTION=$(echo "$line" | cut -d'{' -f1)
-    echo ""
-
-    case "$SECTION" in
-      "GIT")
-        # Only show git-state if data exists (git available)
-        if grep -q "^GIT{" "$CAPSULE_FILE" 2>/dev/null; then
-          echo "<git-state>"
-        fi
-        ;;
-      "FILES")
-        echo "<files-in-context>"
-        ;;
-      "TASK")
-        echo "<current-tasks>"
-        ;;
-      "SUBAGENT")
-        echo "<subagent-results>"
-        ;;
-      "DISCOVERY")
-        echo "<session-discoveries>"
-        ;;
-      "META")
-        echo "<session-meta>"
-        ;;
-    esac
     continue
   fi
 
-  # Parse data rows (skip header line with field names)
+  # Parse data rows
   if echo "$line" | grep -q "^ "; then
-    # This is a data row, parse it
     DATA=$(echo "$line" | sed 's/^ //')
 
-    # Format based on context
     if [ -n "$SECTION" ]; then
       case "$SECTION" in
         "GIT")
-          # branch,head,dirty_count,ahead,behind
           BRANCH=$(echo "$DATA" | cut -d',' -f1)
           HEAD=$(echo "$DATA" | cut -d',' -f2)
           DIRTY=$(echo "$DATA" | cut -d',' -f3)
           AHEAD=$(echo "$DATA" | cut -d',' -f4)
           BEHIND=$(echo "$DATA" | cut -d',' -f5)
-          echo "  <branch>$BRANCH</branch> <head>$HEAD</head>"
-          [ "$DIRTY" != "0" ] && echo "  <dirty-files count=\"$DIRTY\"/>"
-          [ "$AHEAD" != "0" ] && echo "  <ahead count=\"$AHEAD\"/>"
-          [ "$BEHIND" != "0" ] && echo "  <behind count=\"$BEHIND\"/>"
+          GIT_JSON="{\"branch\":\"$(escape_json "$BRANCH")\",\"head\":\"$HEAD\",\"dirtyFiles\":$DIRTY,\"ahead\":$AHEAD,\"behind\":$BEHIND}"
           ;;
         "FILES")
-          # path,action,age_seconds
           PATH_NAME=$(echo "$DATA" | cut -d',' -f1)
           ACTION=$(echo "$DATA" | cut -d',' -f2)
           AGE=$(echo "$DATA" | cut -d',' -f3)
-
-          # Convert age to human readable
-          if [ "$AGE" -lt 60 ]; then
-            AGE_STR="${AGE}s ago"
-          elif [ "$AGE" -lt 3600 ]; then
-            AGE_STR="$((AGE / 60))m ago"
+          AGE_STR=$(format_age "$AGE")
+          FILE_OBJ="{\"path\":\"$(escape_json "$PATH_NAME")\",\"action\":\"$ACTION\",\"age\":\"$AGE_STR\"}"
+          if [ "$FILES_JSON" = "[]" ]; then
+            FILES_JSON="[$FILE_OBJ"
           else
-            AGE_STR="$((AGE / 3600))h ago"
+            FILES_JSON="$FILES_JSON,$FILE_OBJ"
           fi
-
-          echo "  <file path=\"$PATH_NAME\" action=\"$ACTION\" age=\"$AGE_STR\"/>"
           ;;
         "TASK")
-          # status,content
           STATUS=$(echo "$DATA" | cut -d',' -f1)
           CONTENT=$(echo "$DATA" | cut -d',' -f2-)
-
-          echo "  <task status=\"$STATUS\">$CONTENT</task>"
+          TASK_OBJ="{\"status\":\"$STATUS\",\"content\":\"$(escape_json "$CONTENT")\"}"
+          if [ "$TASKS_JSON" = "[]" ]; then
+            TASKS_JSON="[$TASK_OBJ"
+          else
+            TASKS_JSON="$TASKS_JSON,$TASK_OBJ"
+          fi
           ;;
         "SUBAGENT")
-          # age_seconds,type,summary
           AGE=$(echo "$DATA" | cut -d',' -f1)
           TYPE=$(echo "$DATA" | cut -d',' -f2)
           SUMMARY=$(echo "$DATA" | cut -d',' -f3-)
-
-          # Convert age to human readable
-          if [ "$AGE" -lt 60 ]; then
-            AGE_STR="${AGE}s ago"
-          elif [ "$AGE" -lt 3600 ]; then
-            AGE_STR="$((AGE / 60))m ago"
+          AGE_STR=$(format_age "$AGE")
+          SUB_OBJ="{\"type\":\"$TYPE\",\"age\":\"$AGE_STR\",\"summary\":\"$(escape_json "$SUMMARY")\"}"
+          if [ "$SUBAGENTS_JSON" = "[]" ]; then
+            SUBAGENTS_JSON="[$SUB_OBJ"
           else
-            AGE_STR="$((AGE / 3600))h ago"
+            SUBAGENTS_JSON="$SUBAGENTS_JSON,$SUB_OBJ"
           fi
-
-          echo "  <subagent type=\"$TYPE\" age=\"$AGE_STR\">$SUMMARY</subagent>"
           ;;
         "DISCOVERY")
-          # age_seconds,category,content
           AGE=$(echo "$DATA" | cut -d',' -f1)
           CATEGORY=$(echo "$DATA" | cut -d',' -f2)
           CONTENT=$(echo "$DATA" | cut -d',' -f3-)
-
-          # Convert age to human readable
-          if [ "$AGE" -lt 60 ]; then
-            AGE_STR="${AGE}s ago"
-          elif [ "$AGE" -lt 3600 ]; then
-            AGE_STR="$((AGE / 60))m ago"
+          AGE_STR=$(format_age "$AGE")
+          DISC_OBJ="{\"category\":\"$CATEGORY\",\"age\":\"$AGE_STR\",\"content\":\"$(escape_json "$CONTENT")\"}"
+          if [ "$DISCOVERIES_JSON" = "[]" ]; then
+            DISCOVERIES_JSON="[$DISC_OBJ"
           else
-            AGE_STR="$((AGE / 3600))h ago"
+            DISCOVERIES_JSON="$DISCOVERIES_JSON,$DISC_OBJ"
           fi
-
-          echo "  <discovery category=\"$CATEGORY\" age=\"$AGE_STR\">$CONTENT</discovery>"
           ;;
         "META")
-          # messages,duration_seconds,updated_at
           MESSAGES=$(echo "$DATA" | cut -d',' -f1)
           DURATION=$(echo "$DATA" | cut -d',' -f2)
-          UPDATED=$(echo "$DATA" | cut -d',' -f3)
-
-          # Convert duration to human readable
           if [ "$DURATION" -lt 60 ]; then
             DUR_STR="${DURATION}s"
           elif [ "$DURATION" -lt 3600 ]; then
@@ -156,18 +131,28 @@ while IFS= read -r line; do
           else
             DUR_STR="$((DURATION / 3600))h $((DURATION % 3600 / 60))m"
           fi
-
-          echo "  <messages>$MESSAGES</messages> <duration>$DUR_STR</duration>"
+          META_JSON="{\"messages\":$MESSAGES,\"duration\":\"$DUR_STR\"}"
           ;;
       esac
     fi
   fi
 done < "$CAPSULE_FILE"
 
-echo "</context-capsule>"
-echo ""
-echo "<reminder>Capsule contains session state - check before redundant operations</reminder>"
-echo ""
+# Close JSON arrays that were opened
+[ "$FILES_JSON" != "[]" ] && FILES_JSON="$FILES_JSON]"
+[ "$TASKS_JSON" != "[]" ] && TASKS_JSON="$TASKS_JSON]"
+[ "$SUBAGENTS_JSON" != "[]" ] && SUBAGENTS_JSON="$SUBAGENTS_JSON]"
+[ "$DISCOVERIES_JSON" != "[]" ] && DISCOVERIES_JSON="$DISCOVERIES_JSON]"
+
+# Build final capsule JSON
+echo -n "{\"capsule\":{\"updated\":true"
+[ -n "$GIT_JSON" ] && echo -n ",\"git\":$GIT_JSON"
+[ "$FILES_JSON" != "[]" ] && echo -n ",\"files\":$FILES_JSON"
+[ "$TASKS_JSON" != "[]" ] && echo -n ",\"tasks\":$TASKS_JSON"
+[ "$SUBAGENTS_JSON" != "[]" ] && echo -n ",\"subagents\":$SUBAGENTS_JSON"
+[ "$DISCOVERIES_JSON" != "[]" ] && echo -n ",\"discoveries\":$DISCOVERIES_JSON"
+[ -n "$META_JSON" ] && echo -n ",\"meta\":$META_JSON"
+echo "},\"reminder\":\"Capsule contains session state - check before redundant operations\"}"
 
 # Save hash for next comparison
 echo "$CURRENT_HASH" > "$HASH_FILE"
