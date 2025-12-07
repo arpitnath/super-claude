@@ -124,12 +124,16 @@ func (c *Chunker) chunkTypeScript(tree *sitter.Tree) ([]Chunk, error) {
 
 					if len(chunkLines) > 0 {
 						chunkContent := strings.Join(chunkLines, "\n")
+						chunkName := extractNamesFromContent(chunkContent)
+						if chunkName == "" {
+							chunkName = extractNodeName(node, string(c.sourceCode))
+						}
 						chunks = append(chunks, Chunk{
 							Content:   chunkContent,
 							StartLine: chunkStart + 1,
 							EndLine:   chunkEnd + 1,
 							Type:      extractNodeType(nodeType),
-							Name:      extractNodeName(node, string(c.sourceCode)),
+							Name:      chunkName,
 						})
 					}
 				}
@@ -250,12 +254,16 @@ func (c *Chunker) chunkJavaScript(tree *sitter.Tree) ([]Chunk, error) {
 
 					if len(chunkLines) > 0 {
 						chunkContent := strings.Join(chunkLines, "\n")
+						chunkName := extractNamesFromContent(chunkContent)
+						if chunkName == "" {
+							chunkName = extractNodeName(node, string(c.sourceCode))
+						}
 						chunks = append(chunks, Chunk{
 							Content:   chunkContent,
 							StartLine: chunkStart + 1,
 							EndLine:   chunkEnd + 1,
 							Type:      extractNodeType(nodeType),
-							Name:      extractNodeName(node, string(c.sourceCode)),
+							Name:      chunkName,
 						})
 					}
 				}
@@ -706,4 +714,86 @@ func extractContext(content string) string {
 	}
 
 	return "Code chunk"
+}
+
+func extractNamesFromContent(content string) string {
+	lines := strings.Split(content, "\n")
+	var names []string
+
+	patterns := []struct {
+		prefix string
+		skip   string
+	}{
+		{"function ", ""},
+		{"async function ", ""},
+		{"export function ", ""},
+		{"export async function ", ""},
+		{"export default function ", ""},
+		{"class ", ""},
+		{"export class ", ""},
+		{"export default class ", ""},
+	}
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		for _, p := range patterns {
+			if strings.HasPrefix(trimmed, p.prefix) {
+				rest := strings.TrimPrefix(trimmed, p.prefix)
+				name := ""
+				for _, ch := range rest {
+					if ch == '(' || ch == '{' || ch == ' ' || ch == '<' {
+						break
+					}
+					name += string(ch)
+				}
+				if name != "" && !contains(names, name) {
+					names = append(names, name)
+				}
+				break
+			}
+		}
+
+		if strings.HasPrefix(trimmed, "const ") || strings.HasPrefix(trimmed, "let ") || strings.HasPrefix(trimmed, "var ") || strings.HasPrefix(trimmed, "export const ") {
+			rest := trimmed
+			for _, prefix := range []string{"export const ", "const ", "let ", "var "} {
+				if strings.HasPrefix(rest, prefix) {
+					rest = strings.TrimPrefix(rest, prefix)
+					break
+				}
+			}
+			name := ""
+			for _, ch := range rest {
+				if ch == ' ' || ch == '=' || ch == ':' {
+					break
+				}
+				name += string(ch)
+			}
+			if name != "" && (strings.Contains(trimmed, "= function") || strings.Contains(trimmed, "= (") || strings.Contains(trimmed, "= async") || strings.Contains(trimmed, "=>")) {
+				if !contains(names, name) {
+					names = append(names, name)
+				}
+			}
+		}
+	}
+
+	if len(names) == 0 {
+		return ""
+	}
+	if len(names) == 1 {
+		return names[0]
+	}
+	if len(names) > 3 {
+		names = names[:3]
+	}
+	return strings.Join(names, ", ")
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

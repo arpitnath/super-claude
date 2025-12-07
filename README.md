@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-Compatible-orange.svg" alt="Claude Code"></a>
-  <a href="https://github.com/arpitnath/super-claude-kit"><img src="https://img.shields.io/badge/version-1.2.0-blue.svg" alt="Version"></a>
+  <a href="https://github.com/arpitnath/super-claude-kit"><img src="https://img.shields.io/badge/version-1.2.1-blue.svg" alt="Version"></a>
 </p>
 
 <p align="center">
@@ -22,11 +22,14 @@
 </p>
 
 <p align="center">
-  <code>curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install | bash</code>
+  <code>curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install.sh | bash</code>
 </p>
 
-
-
+<p align="center">
+  <strong>📍 Per-project installation</strong> — Run from your project root, installs to <code>.claude/</code>
+  <br/>
+  Works alongside vanilla Claude Code (enhancement, not replacement)
+</p>
 
 
 
@@ -42,11 +45,16 @@
 
 ### Installing Super Claude Kit
 
-Run the one-line installer:
+Run the one-line installer **from your project root**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install | bash
+cd your-project
+curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install.sh | bash
 ```
+
+> **Note:** This installs to your project's `.claude/` directory (like `.claude/settings.json`).
+> Install separately in each project where you want Super Claude Kit features.
+> This is **not** a global installation — it enhances Claude Code per-project.
 
 That's it! Restart Claude Code and you'll see the context capsule on every session.
 
@@ -54,18 +62,19 @@ That's it! Restart Claude Code and you'll see the context capsule on every sessi
 <summary>Manual installation (advanced)</summary>
 
 ```bash
-# Clone the repository
-git clone https://github.com/arpitnath/super-claude-kit.git
-cd super-claude-kit
+# Clone to your project directory
+cd your-project
+git clone https://github.com/arpitnath/super-claude-kit.git .super-claude-kit-src
+cd .super-claude-kit-src
 
-# Run the installer
-bash install
+# Run the installer (installs to parent project)
+bash install.sh
 ```
 
 The installer will:
 - Install hooks to `.claude/hooks/`
 - Build Go tools (dependency-scanner, progressive-reader)
-- Configure `~/.claude/settings.local.json`
+- Configure `.claude/settings.local.json`
 - Auto-install Go 1.23+ if not present
 
 </details>
@@ -445,6 +454,22 @@ CLAUDE_DEBUG_HOOKS=true claude
 ```
 
 For more issues, see [FAQ](docs/FAQ.md) or [open an issue](https://github.com/arpitnath/super-claude-kit/issues).
+
+---
+
+## Common Questions
+
+**Q: Do I install this globally or per-project?**
+A: **Per-project.** Run the install script from each project where you want Super Claude Kit. It installs to `.claude/` in that directory.
+
+**Q: Does this replace Claude Code?**
+A: **No.** It enhances Claude Code by adding hooks, tools, and persistent context memory. You still use the normal `claude` command.
+
+**Q: Where are files installed?**
+A: In your project's `.claude/` directory: hooks, tools, bin, settings. Similar to how `.claude/settings.json` works.
+
+**Q: Can I use it in multiple projects?**
+A: Yes! Install separately in each project. Each project gets its own context capsule and dependency graph.
 
 ---
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tool auto-suggest - suggests relevant tools based on user prompt keywords
 # Integrated into pre-task-analysis hook for automatic tool recommendations
+# Output goes to stderr to not interfere with JSON hook responses
 
 set -euo pipefail
 
@@ -47,26 +48,30 @@ if echo "$PROMPT_LOWER" | grep -qE '(large file|big file|huge file|read.*entire|
     SUGGESTIONS+=("progressive-reader:Read large files efficiently in semantic chunks")
 fi
 
+# Output JSON format if suggestions exist
 if [ ${#SUGGESTIONS[@]} -gt 0 ]; then
-    echo ""
-    echo "<enforcement type=\"super-claude-kit-tools\">"
-    echo "  <required>true</required>"
-
+    TOOLS_JSON="["
+    FIRST=true
     SEEN_TOOLS=""
+
     for suggestion in "${SUGGESTIONS[@]}"; do
         TOOL_NAME="${suggestion%%:*}"
         TOOL_DESC="${suggestion#*:}"
 
         if ! echo "$SEEN_TOOLS" | grep -q "^${TOOL_NAME}$"; then
             SEEN_TOOLS="${SEEN_TOOLS}${TOOL_NAME}"$'\n'
-            echo "  <tool name=\"$TOOL_NAME\">$TOOL_DESC</tool>"
+            if [ "$FIRST" = true ]; then
+                FIRST=false
+            else
+                TOOLS_JSON+=","
+            fi
+            TOOLS_JSON+="{\"name\":\"$TOOL_NAME\",\"description\":\"$TOOL_DESC\"}"
         fi
     done
 
-    echo ""
-    echo "  <usage>bash ./.claude/lib/tool-runner.sh &lt;tool-name&gt; [args]</usage>"
-    echo "</enforcement>"
-    echo ""
+    TOOLS_JSON+="]"
+
+    echo "{\"type\":\"enforcement\",\"category\":\"super-claude-kit-tools\",\"required\":true,\"tools\":$TOOLS_JSON,\"usage\":\"bash ./.claude/lib/tool-runner.sh <tool-name> [args]\"}"
 fi
 
 exit 0

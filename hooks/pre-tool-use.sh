@@ -22,48 +22,17 @@ if [ "$TOOL_NAME" == "Task" ]; then
 
     # Detect dependency-related queries
     if echo "$PROMPT_LOWER" | grep -qE '(depend|import|require|module.*load|circular.*depend|who.*use|what.*import|find.*import)'; then
-      cat << 'EOF'
-
-<tool-enforcement type="dependency-analysis">
-  <warning>Query appears to be about code dependencies</warning>
-
-  <dont-use tool="Task" reason="inefficient">
-    - Slower: Scans files one-by-one
-    - Limited: Cannot detect circular dependencies
-    - Expensive: High token usage
-  </dont-use>
-
-  <use-instead>
-    <tool name="query-deps" use-case="what imports X, who uses X">
-      bash .claude/tools/query-deps/query-deps.sh &lt;file-path&gt;
-    </tool>
-
-    <tool name="impact-analysis" use-case="what would break if I change X">
-      bash .claude/tools/impact-analysis/impact-analysis.sh &lt;file-path&gt;
-    </tool>
-
-    <tool name="find-circular" use-case="circular dependencies">
-      bash .claude/tools/find-circular/find-circular.sh
-    </tool>
-  </use-instead>
-
-  <benefit>These tools are instant and read pre-built dependency graph</benefit>
-</tool-enforcement>
-
+      # Output JSON enforcement message (to stderr for informational display)
+      cat << 'EOF' >&2
+{"type":"tool-enforcement","category":"dependency-analysis","warning":"Query appears to be about code dependencies","dontUse":{"tool":"Task","reason":"inefficient","issues":["Slower: Scans files one-by-one","Limited: Cannot detect circular dependencies","Expensive: High token usage"]},"useInstead":[{"name":"query-deps","useCase":"what imports X, who uses X","command":"bash .claude/tools/query-deps/query-deps.sh <file-path>"},{"name":"impact-analysis","useCase":"what would break if I change X","command":"bash .claude/tools/impact-analysis/impact-analysis.sh <file-path>"},{"name":"find-circular","useCase":"circular dependencies","command":"bash .claude/tools/find-circular/find-circular.sh"}],"benefit":"These tools are instant and read pre-built dependency graph"}
 EOF
     fi
 
     # Detect file search queries
     if echo "$PROMPT_LOWER" | grep -qE '(where.*file|find.*file|locate.*file|search.*file)' && ! echo "$PROMPT_LOWER" | grep -qE '(depend|import|require)'; then
-      cat << 'EOF'
-
-<tool-suggestion type="file-search">
-  <use-instead tool="Glob" reason="faster-and-direct">
-    For finding files by name pattern:
-    Glob pattern: **/*&lt;filename&gt;*
-  </use-instead>
-</tool-suggestion>
-
+      # Output JSON suggestion message (to stderr for informational display)
+      cat << 'EOF' >&2
+{"type":"tool-suggestion","category":"file-search","useInstead":{"tool":"Glob","reason":"faster-and-direct","pattern":"**/*<filename>*","description":"For finding files by name pattern"}}
 EOF
     fi
   fi
@@ -78,31 +47,31 @@ fi
 
 FILE_PATH=$(echo "$TOOL_INPUT" | python3 -c "import sys, json; print(json.load(sys.stdin).get('file_path', ''))" 2>/dev/null || echo "")
 
-# Check file size and recommend progressive-reader for large files
-if [ -n "$FILE_PATH" ] && [ -f "$FILE_PATH" ]; then
-  FILE_SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo "0")
-  FILE_SIZE_KB=$((FILE_SIZE / 1024))
+# Get project root from script location (.claude/hooks/ -> project root)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-  if [ "$FILE_SIZE" -gt 51200 ]; then  # 50KB threshold
-    cat << EOF
+# Check file size and block Read for large files (force progressive-reader)
+if [ -n "$FILE_PATH" ]; then
+  RESOLVED_PATH=""
 
-<tool-enforcement type="large-file-reading">
-  <warning>File size: ${FILE_SIZE_KB}KB exceeds 50KB threshold</warning>
+  # Try multiple path resolutions
+  if [ -f "$FILE_PATH" ]; then
+    RESOLVED_PATH="$FILE_PATH"
+  elif [ -f "$PROJECT_ROOT/$FILE_PATH" ]; then
+    RESOLVED_PATH="$PROJECT_ROOT/$FILE_PATH"
+  elif [ -f "$(pwd)/$FILE_PATH" ]; then
+    RESOLVED_PATH="$(pwd)/$FILE_PATH"
+  fi
 
-  <dont-use tool="Read" reason="token-wasteful">
-    - Loads entire file even if you need small section
-    - No semantic awareness - may truncate or split mid-function
-    - Token cost: ~$((FILE_SIZE / 4)) tokens for full file
-  </dont-use>
+  if [ -n "$RESOLVED_PATH" ]; then
+    FILE_SIZE=$(stat -f%z "$RESOLVED_PATH" 2>/dev/null || stat -c%s "$RESOLVED_PATH" 2>/dev/null || echo "0")
+    FILE_SIZE_KB=$((FILE_SIZE / 1024))
 
-  <use-instead tool="progressive-reader">
-    <step1>Preview chunks: progressive-reader --path ${FILE_PATH} --list</step1>
-    <step2>Read specific chunk: progressive-reader --path ${FILE_PATH} --chunk N</step2>
-    <benefit>Saves 75-97% tokens via semantic chunking</benefit>
-  </use-instead>
-</tool-enforcement>
-
-EOF
+    if [ "$FILE_SIZE" -gt 51200 ]; then  # 50KB threshold
+      echo "{\"decision\": \"block\", \"reason\": \"File ${FILE_SIZE_KB}KB exceeds 50KB. Use progressive-reader instead: .claude/bin/progressive-reader --path $FILE_PATH --list\"}"
+      exit 0
+    fi
   fi
 fi
 
@@ -141,8 +110,8 @@ if grep -q "^${FILE_PATH}," "$RECENT_READS_LOG" 2>/dev/null; then
       TIME_STR="$((TIME_SINCE / 60))m"
     fi
 
-    # Show warning
-    echo "<read-warning file=\"$FILE_PATH\" last-read=\"${TIME_STR} ago\">File recently read - check capsule first</read-warning>"
+    # Show warning as JSON (to stderr so it doesn't interfere with JSON blocking output)
+    echo "{\"type\":\"read-warning\",\"file\":\"$FILE_PATH\",\"lastRead\":\"${TIME_STR} ago\",\"message\":\"File recently read - check capsule first\"}" >&2
 
     # Mark as warned
     echo "$FILE_PATH" >> "$WARNINGS_SHOWN"

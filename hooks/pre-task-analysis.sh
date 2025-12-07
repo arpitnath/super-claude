@@ -14,130 +14,104 @@ else
   echo "1" > "$MESSAGE_COUNT_FILE"
 fi
 
-# Output JSON with systemMessage on first message BEFORE any plain text
-# (Ensures first character is '{' for proper JSON parsing)
-if [ "$NEW_COUNT" -eq 1 ]; then
-  cat << 'EOF'
-{
-  "systemMessage": "Super Claude Kit - Context and tools loaded"
-}
-EOF
-fi
-
+# Refresh capsule if needed
 if ./.claude/hooks/check-refresh-needed.sh 2>/dev/null; then
   ./.claude/hooks/detect-changes.sh 2>/dev/null
   ./.claude/hooks/update-capsule.sh 2>/dev/null
-  ./.claude/hooks/inject-capsule.sh 2>/dev/null
-else
-  :
 fi
 
-SUGGESTIONS_MADE=false
+# Collect suggestions as JSON array
+SUGGESTIONS="[]"
 
+# Explore suggestion
 if echo "$USER_PROMPT" | grep -qiE "explore|find.*file|search.*code|where.*is|how does.*work|understand.*architecture|locate|discover|investigate|show.*me"; then
-    cat << 'EOF'
-
-<delegation-suggestion>
-  <agent type="Explore" task-type="exploration-discovery">
-    <reason>Fast multi-round investigation with pattern matching</reason>
-    <usage>Task tool with subagent_type='Explore'</usage>
-    <thoroughness options="quick, medium, very thorough"/>
-  </agent>
-</delegation-suggestion>
-
-EOF
-    SUGGESTIONS_MADE=true
+  SUGGESTIONS=$(echo "$SUGGESTIONS" | python3 -c "import sys, json; arr=json.load(sys.stdin); arr.append({'type':'delegation','agent':'Explore','taskType':'exploration-discovery','reason':'Fast multi-round investigation with pattern matching','usage':'Task tool with subagent_type=Explore','options':{'thoroughness':['quick','medium','very thorough']}}); print(json.dumps(arr))" 2>/dev/null || echo "$SUGGESTIONS")
 fi
 
+# Plan suggestion
 if echo "$USER_PROMPT" | grep -qiE "plan|implement|build|create|develop|design|architect|add.*feature|new.*system"; then
-    cat << 'EOF'
-
-<delegation-suggestion>
-  <agent type="Plan" task-type="planning-implementation">
-    <reason>Creates systematic implementation strategy</reason>
-    <usage>Task tool with subagent_type='Plan'</usage>
-    <returns>Detailed implementation plan with steps</returns>
-  </agent>
-</delegation-suggestion>
-
-EOF
-    SUGGESTIONS_MADE=true
+  SUGGESTIONS=$(echo "$SUGGESTIONS" | python3 -c "import sys, json; arr=json.load(sys.stdin); arr.append({'type':'delegation','agent':'Plan','taskType':'planning-implementation','reason':'Creates systematic implementation strategy','usage':'Task tool with subagent_type=Plan','returns':'Detailed implementation plan with steps'}); print(json.dumps(arr))" 2>/dev/null || echo "$SUGGESTIONS")
 fi
 
+# General-purpose suggestion
 if echo "$USER_PROMPT" | grep -qiE "fix.*and.*test|migrate.*and.*verify|update.*across|refactor.*entire"; then
-    cat << 'EOF'
-
-<delegation-suggestion>
-  <agent type="general-purpose" task-type="complex-multi-step">
-    <reason>Handles complex workflows with multiple operations</reason>
-    <usage>Task tool with subagent_type='general-purpose'</usage>
-  </agent>
-</delegation-suggestion>
-
-EOF
-    SUGGESTIONS_MADE=true
+  SUGGESTIONS=$(echo "$SUGGESTIONS" | python3 -c "import sys, json; arr=json.load(sys.stdin); arr.append({'type':'delegation','agent':'general-purpose','taskType':'complex-multi-step','reason':'Handles complex workflows with multiple operations','usage':'Task tool with subagent_type=general-purpose'}); print(json.dumps(arr))" 2>/dev/null || echo "$SUGGESTIONS")
 fi
 
+# Parallel execution tip
 if echo "$USER_PROMPT" | grep -qiE "and|also|both|multiple|all three|check.*check|verify.*verify"; then
-    cat << 'EOF'
-
-<performance-tip type="parallel-tool-calls">
-  <detected>Multiple independent operations</detected>
-  <best-practice>Execute tool calls in parallel</best-practice>
-  <reason>Faster execution - single message with multiple tools</reason>
-  <example>Read 3 files -> Use 3 Read calls in one message</example>
-</performance-tip>
-
-EOF
-    SUGGESTIONS_MADE=true
+  SUGGESTIONS=$(echo "$SUGGESTIONS" | python3 -c "import sys, json; arr=json.load(sys.stdin); arr.append({'type':'performance-tip','category':'parallel-tool-calls','detected':'Multiple independent operations','bestPractice':'Execute tool calls in parallel','reason':'Faster execution - single message with multiple tools','example':'Read 3 files -> Use 3 Read calls in one message'}); print(json.dumps(arr))" 2>/dev/null || echo "$SUGGESTIONS")
 fi
 
+# Memory available suggestion
 if echo "$USER_PROMPT" | grep -qiE "continue|resume|pick.*up|where.*left|last.*time|previous|what.*next"; then
-    if [ -f "docs/exploration/CURRENT_SESSION.md" ]; then
-        cat << 'EOF'
-
-<memory-available source="exploration-journal">
-  <action required="true">Read exploration journal FIRST</action>
-  <location>docs/exploration/CURRENT_SESSION.md</location>
-  <reason>Avoid repeating work, maintain continuity</reason>
-  <next-step>Summarize previous session for user</next-step>
-</memory-available>
-
-EOF
-        SUGGESTIONS_MADE=true
-    fi
+  if [ -f "docs/exploration/CURRENT_SESSION.md" ]; then
+    SUGGESTIONS=$(echo "$SUGGESTIONS" | python3 -c "import sys, json; arr=json.load(sys.stdin); arr.append({'type':'memory-available','source':'exploration-journal','actionRequired':True,'location':'docs/exploration/CURRENT_SESSION.md','reason':'Avoid repeating work, maintain continuity','nextStep':'Summarize previous session for user'}); print(json.dumps(arr))" 2>/dev/null || echo "$SUGGESTIONS")
+  fi
 fi
 
+# Task tracking enforcement
 if echo "$USER_PROMPT" | grep -qiE "implement|build|create|fix.*bug|add.*feature"; then
-    cat << 'EOF'
-
-<enforcement type="task-tracking">
-  <required>true</required>
-  <tool>TodoWrite</tool>
-  <instruction>Break complex work into trackable steps</instruction>
-</enforcement>
-
-EOF
-    SUGGESTIONS_MADE=true
+  SUGGESTIONS=$(echo "$SUGGESTIONS" | python3 -c "import sys, json; arr=json.load(sys.stdin); arr.append({'type':'enforcement','category':'task-tracking','required':True,'tool':'TodoWrite','instruction':'Break complex work into trackable steps'}); print(json.dumps(arr))" 2>/dev/null || echo "$SUGGESTIONS")
 fi
 
-if [ "$SUGGESTIONS_MADE" = false ]; then
-    PROMPT_LENGTH=${#USER_PROMPT}
-    if [ $PROMPT_LENGTH -gt 200 ]; then
-        cat << 'EOF'
-
-<reminder type="complex-task">
-  <detected>Long prompt - complex task</detected>
-  <available-subagents>Plan, Explore, general-purpose</available-subagents>
-  <consider>Breaking into smaller tasks with TodoWrite</consider>
-</reminder>
-
-EOF
-    fi
+# Complex task reminder
+PROMPT_LENGTH=${#USER_PROMPT}
+if [ "$(echo "$SUGGESTIONS" | python3 -c "import sys,json;print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)" = "0" ] && [ $PROMPT_LENGTH -gt 200 ]; then
+  SUGGESTIONS=$(echo "$SUGGESTIONS" | python3 -c "import sys, json; arr=json.load(sys.stdin); arr.append({'type':'reminder','category':'complex-task','detected':'Long prompt - complex task','availableSubagents':['Plan','Explore','general-purpose'],'consider':'Breaking into smaller tasks with TodoWrite'}); print(json.dumps(arr))" 2>/dev/null || echo "$SUGGESTIONS")
 fi
 
+# Get capsule content (now outputs JSON)
+CAPSULE_JSON="{}"
+if [ -f "./.claude/hooks/inject-capsule.sh" ]; then
+  CAPSULE_JSON=$(./.claude/hooks/inject-capsule.sh 2>/dev/null || echo "{}")
+fi
+
+# Output JSON response (first character MUST be '{' for Claude Code parsing)
+if [ "$NEW_COUNT" -eq 1 ]; then
+  # First message includes systemMessage
+  python3 -c "
+import json, sys
+try:
+    capsule = json.loads('''$CAPSULE_JSON''') if '''$CAPSULE_JSON'''.strip() else {}
+except:
+    capsule = {}
+suggestions = json.loads('''$SUGGESTIONS''')
+output = {
+  'systemMessage': 'Super Claude Kit - Context and tools loaded',
+  'hookSpecificOutput': {
+    'hookEventName': 'UserPromptSubmit',
+    'context': capsule,
+    'suggestions': suggestions
+  }
+}
+print(json.dumps(output))
+" 2>/dev/null || echo '{"systemMessage":"Super Claude Kit - Context and tools loaded"}'
+else
+  # Subsequent messages - only if we have content
+  if [ "$CAPSULE_JSON" != "{}" ] || [ "$SUGGESTIONS" != "[]" ]; then
+    python3 -c "
+import json, sys
+try:
+    capsule = json.loads('''$CAPSULE_JSON''') if '''$CAPSULE_JSON'''.strip() else {}
+except:
+    capsule = {}
+suggestions = json.loads('''$SUGGESTIONS''')
+output = {
+  'hookSpecificOutput': {
+    'hookEventName': 'UserPromptSubmit',
+    'context': capsule,
+    'suggestions': suggestions
+  }
+}
+print(json.dumps(output))
+" 2>/dev/null || true
+  fi
+fi
+
+# Run tool suggestions (output to stderr to not interfere with JSON)
 if [ -f "./.claude/hooks/tool-auto-suggest.sh" ]; then
-    ./.claude/hooks/tool-auto-suggest.sh "$USER_PROMPT" 2>/dev/null || true
+  ./.claude/hooks/tool-auto-suggest.sh "$USER_PROMPT" >&2 2>/dev/null || true
 fi
 
 exit 0

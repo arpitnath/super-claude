@@ -45,12 +45,18 @@ case "$TOOL_NAME" in
     ;;
 
   "Bash")
-    # Log progressive-reader usage
+    # Log progressive-reader usage and output
     if echo "$TOOL_INPUT" | grep -q "progressive-reader"; then
       if FILE_PATH=$(echo "$TOOL_INPUT" | grep -oE '\-\-path [^ ]+' | cut -d' ' -f2); then
         if [ -n "$FILE_PATH" ]; then
           ./.claude/hooks/log-file-access.sh "$FILE_PATH" "progressive-read" 2>/dev/null || true
         fi
+      fi
+      # Log progressive-reader output for debugging
+      if [ -n "$TOOL_OUTPUT" ]; then
+        echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] progressive-reader output:" >> .claude/progressive-reader.log
+        echo "$TOOL_OUTPUT" >> .claude/progressive-reader.log
+        echo "---" >> .claude/progressive-reader.log
       fi
     fi
     ;;
