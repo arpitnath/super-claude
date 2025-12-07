@@ -8,8 +8,8 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-Compatible-blue.svg" alt="Claude Code"></a>
-  <a href="https://github.com/arpitnath/super-claude-kit"><img src="https://img.shields.io/badge/version-1.1.1-blue.svg" alt="Version"></a>
+  <a href="https://claude.ai"><img src="https://img.shields.io/badge/Claude_Code-Compatible-orange.svg" alt="Claude Code"></a>
+  <a href="https://github.com/arpitnath/super-claude-kit"><img src="https://img.shields.io/badge/version-1.1.2-blue.svg" alt="Version"></a>
 </p>
 
 <p align="center">
@@ -181,6 +181,44 @@ Built-in dependency scanner analyzes your codebase:
 - **10,000 files** scanned in <30 seconds
 - Supports TypeScript, JavaScript, Python, Go
 
+
+---
+
+### 📊 Progressive Reader Demo
+
+See the difference when working with large files (187KB React source):
+
+<p align="center">
+  <img src="./.github/progressive-reader-demo.png" alt="Progressive Reader Comparison" width="100%" />
+</p>
+
+| Metric | Vanilla Claude Code | Super Claude Kit |
+|--------|---------------------|------------------|
+| **Initial Read** | `MaxFileReadTokenExceededError` | Same error |
+| **Recovery** | 8+ Read calls with offset/limit | Uses progressive-reader |
+| **Lines read** | 5,339 lines (guessing) | 100 lines (targeted) |
+| **Token savings** | — | **98%** for structure |
+
+<details>
+<summary>🧪 Try it yourself</summary>
+
+```bash
+# 1. Clone React and install Super Claude Kit
+git clone https://github.com/facebook/react.git && cd react
+curl -fsSL https://raw.githubusercontent.com/arpitnath/super-claude-kit/master/install.sh | bash
+
+# 2. Run Claude Code in debug mode
+claude --debug
+
+# 3. Send this prompt:
+# "Summarize all functions in ReactFiberWorkLoop.js, organized by category"
+```
+
+**What to look for:**
+- Vanilla: 8+ Read operations with arbitrary 800-line chunks
+- Super Claude Kit: `progressive-reader --list` → targeted chunk reads
+
+</details>
 
 ---
 
