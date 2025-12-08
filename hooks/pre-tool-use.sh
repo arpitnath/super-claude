@@ -70,6 +70,17 @@ if [ -n "$FILE_PATH" ]; then
   fi
 
   if [ -n "$RESOLVED_PATH" ]; then
+    # Skip size check for images and binary files (Claude handles these natively)
+    FILE_EXT="${RESOLVED_PATH##*.}"
+    FILE_EXT_LOWER=$(echo "$FILE_EXT" | tr '[:upper:]' '[:lower:]')
+
+    case "$FILE_EXT_LOWER" in
+      jpg|jpeg|png|gif|webp|svg|bmp|ico|pdf|ipynb)
+        # Allow images, PDFs, notebooks regardless of size
+        exit 0
+        ;;
+    esac
+
     FILE_SIZE=$(stat -f%z "$RESOLVED_PATH" 2>/dev/null || stat -c%s "$RESOLVED_PATH" 2>/dev/null || echo "0")
     FILE_SIZE_KB=$((FILE_SIZE / 1024))
 
