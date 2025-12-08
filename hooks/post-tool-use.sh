@@ -11,9 +11,14 @@ INPUT_JSON=$(cat)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Check if we're in .claude/hooks (installed) or hooks/ (source)
 if [[ "$SCRIPT_DIR" == *".claude/hooks"* ]]; then
-    # Installed location - tools are in project root tools/
-    PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
-    TOOLS_DIR="$PROJECT_ROOT/tools/memory-graph"
+    # Installed location - check .claude/tools first, then project root tools/
+    CLAUDE_DIR="$(dirname "$SCRIPT_DIR")"
+    PROJECT_ROOT="$(dirname "$CLAUDE_DIR")"
+    if [ -d "$CLAUDE_DIR/tools/memory-graph" ]; then
+        TOOLS_DIR="$CLAUDE_DIR/tools/memory-graph"
+    else
+        TOOLS_DIR="$PROJECT_ROOT/tools/memory-graph"
+    fi
 else
     # Source location - tools are sibling to hooks/
     TOOLS_DIR="$(dirname "$SCRIPT_DIR")/tools/memory-graph"
