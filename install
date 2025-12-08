@@ -292,6 +292,8 @@ echo ""
 
 echo "Configuring Claude Code..."
 if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
+  # Generate settings with walk-up logic that finds hooks by FILE (not just .claude dir)
+  # This supports both project-local and global (~/.claude) installations
   cat > "$INSTALL_DIR/.claude/settings.local.json" << 'EOF'
 {
   "hooks": {
@@ -301,7 +303,7 @@ if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/session-start.sh"
+            "command": "bash -c 'export CLAUDE_PROJECT_DIR=$PWD; DIR=$PWD; while [ \"$DIR\" != \"/\" ]; do [ -f \"$DIR/.claude/hooks/session-start.sh\" ] && cd \"$DIR\" && exec bash .claude/hooks/session-start.sh; DIR=$(dirname \"$DIR\"); done'"
           }
         ]
       }
@@ -312,7 +314,7 @@ if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pre-task-analysis.sh"
+            "command": "bash -c 'export CLAUDE_PROJECT_DIR=$(cat $HOME/.claude/current_project_dir 2>/dev/null || echo $PWD); DIR=$PWD; while [ \"$DIR\" != \"/\" ]; do [ -f \"$DIR/.claude/hooks/pre-task-analysis.sh\" ] && cd \"$DIR\" && exec bash .claude/hooks/pre-task-analysis.sh; DIR=$(dirname \"$DIR\"); done'"
           }
         ]
       }
@@ -323,7 +325,7 @@ if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/post-tool-use.sh"
+            "command": "bash -c 'export CLAUDE_PROJECT_DIR=$(cat $HOME/.claude/current_project_dir 2>/dev/null || echo $PWD); DIR=$PWD; while [ \"$DIR\" != \"/\" ]; do [ -f \"$DIR/.claude/hooks/post-tool-use.sh\" ] && cd \"$DIR\" && exec bash .claude/hooks/post-tool-use.sh; DIR=$(dirname \"$DIR\"); done'"
           }
         ]
       }
@@ -334,7 +336,7 @@ if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pre-tool-use.sh"
+            "command": "bash -c 'export CLAUDE_PROJECT_DIR=$(cat $HOME/.claude/current_project_dir 2>/dev/null || echo $PWD); DIR=$PWD; while [ \"$DIR\" != \"/\" ]; do [ -f \"$DIR/.claude/hooks/pre-tool-use.sh\" ] && cd \"$DIR\" && exec bash .claude/hooks/pre-tool-use.sh; DIR=$(dirname \"$DIR\"); done'"
           }
         ]
       }
@@ -345,7 +347,7 @@ if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/stop.sh"
+            "command": "bash -c 'export CLAUDE_PROJECT_DIR=$(cat $HOME/.claude/current_project_dir 2>/dev/null || echo $PWD); DIR=$PWD; while [ \"$DIR\" != \"/\" ]; do [ -f \"$DIR/.claude/hooks/stop.sh\" ] && cd \"$DIR\" && exec bash .claude/hooks/stop.sh; DIR=$(dirname \"$DIR\"); done'"
           }
         ]
       }
@@ -356,7 +358,7 @@ if [ ! -f "$INSTALL_DIR/.claude/settings.local.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/session-end.sh"
+            "command": "bash -c 'export CLAUDE_PROJECT_DIR=$(cat $HOME/.claude/current_project_dir 2>/dev/null || echo $PWD); DIR=$PWD; while [ \"$DIR\" != \"/\" ]; do [ -f \"$DIR/.claude/hooks/session-end.sh\" ] && cd \"$DIR\" && exec bash .claude/hooks/session-end.sh; DIR=$(dirname \"$DIR\"); done'"
           }
         ]
       }
@@ -375,13 +377,20 @@ import sys
 with open('.claude/settings.local.json', 'r') as f:
     existing = json.load(f)
 
+# Walk-up logic for SessionStart: find hooks by looking for the specific hook FILE (not just .claude dir)
+# This fixes global installation where project dirs may have empty .claude/ from Claude Code
+def make_session_start_cmd(hook_file):
+    return f'bash -c \'export CLAUDE_PROJECT_DIR=$PWD; DIR=$PWD; while [ "$DIR" != "/" ]; do [ -f "$DIR/.claude/hooks/{hook_file}" ] && cd "$DIR" && exec bash .claude/hooks/{hook_file}; DIR=$(dirname "$DIR"); done\''
+
+# Other hooks read PROJECT_DIR from file saved by session-start.sh
+# This handles cases where Claude Code changes pwd during session
 def make_hook_cmd(hook_file):
-    return f'bash -c \'DIR=$PWD; while [ "$DIR" != "/" ]; do [ -d "$DIR/.claude" ] && cd "$DIR" && exec bash .claude/hooks/{hook_file}; DIR=$(dirname "$DIR"); done\''
+    return f'bash -c \'export CLAUDE_PROJECT_DIR=$(cat $HOME/.claude/current_project_dir 2>/dev/null || echo $PWD); DIR=$PWD; while [ "$DIR" != "/" ]; do [ -f "$DIR/.claude/hooks/{hook_file}" ] && cd "$DIR" && exec bash .claude/hooks/{hook_file}; DIR=$(dirname "$DIR"); done\''
 
 required_hooks = {
     "SessionStart": [{
         "matcher": "*",
-        "hooks": [{"type": "command", "command": make_hook_cmd("session-start.sh")}]
+        "hooks": [{"type": "command", "command": make_session_start_cmd("session-start.sh")}]
     }],
     "UserPromptSubmit": [{
         "matcher": "*",
