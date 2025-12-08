@@ -15,6 +15,17 @@ from typing import Optional, Dict, List
 # Add lib directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parser import create_node
+from graph import MemoryGraph
+
+
+def sync_graph_cache(memory_dir: str, node_path: str) -> None:
+    """Update the graph cache after creating/updating a node."""
+    try:
+        graph = MemoryGraph(memory_dir)
+        graph.update_single_node(node_path)
+    except Exception:
+        # Don't fail the capture if graph sync fails
+        pass
 
 
 def get_session_id() -> str:
@@ -180,6 +191,9 @@ def capture_file_access(
     with open(node_path, 'w', encoding='utf-8') as f:
         f.write(node_content)
 
+    # Sync graph cache
+    sync_graph_cache(memory_dir, node_path)
+
     return {"status": "created", "node_id": node_id}
 
 
@@ -267,6 +281,9 @@ def capture_task(
     with open(node_path, 'w', encoding='utf-8') as f:
         f.write(node_content)
 
+    # Sync graph cache
+    sync_graph_cache(memory_dir, node_path)
+
     return {"status": "created", "node_id": node_id}
 
 
@@ -336,6 +353,9 @@ def capture_discovery(
 
     with open(node_path, 'w', encoding='utf-8') as f:
         f.write(node_content)
+
+    # Sync graph cache
+    sync_graph_cache(memory_dir, node_path)
 
     return {"status": "created", "node_id": node_id}
 
@@ -412,6 +432,9 @@ def capture_error(
 
     with open(node_path, 'w', encoding='utf-8') as f:
         f.write(node_content)
+
+    # Sync graph cache
+    sync_graph_cache(memory_dir, node_path)
 
     return {"status": "created", "node_id": node_id}
 
