@@ -2,6 +2,25 @@
 
 # Super Claude Kit Session Start Hook
 # Runs at session start to load context and restore memory
+# Supports both project-local and global (~/.claude) installations
+
+# =============================================================================
+# GLOBAL INSTALLATION SUPPORT
+# =============================================================================
+# Determine HOOKS_DIR from script location (works regardless of pwd)
+HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLAUDE_DIR="$(dirname "$HOOKS_DIR")"
+
+# PROJECT_DIR is where the user launched Claude Code (passed via CLAUDE_PROJECT_DIR)
+# Falls back to pwd if not set (for backwards compatibility)
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+export CLAUDE_PROJECT_DIR="$PROJECT_DIR"
+
+# Save PROJECT_DIR for other hooks (in case pwd changes during session)
+echo "$PROJECT_DIR" > "$CLAUDE_DIR/current_project_dir"
+
+# Change to CLAUDE_DIR parent so relative paths (.claude/...) work correctly
+cd "$CLAUDE_DIR/.." 2>/dev/null || cd "$HOME"
 
 # Debug mode - set via environment variable
 DEBUG_MODE="${CLAUDE_DEBUG_HOOKS:-false}"
@@ -10,18 +29,20 @@ DEBUG_LOG=".claude/session-start-debug.log"
 if [ "$DEBUG_MODE" = "true" ]; then
   echo "=== SESSION START DEBUG LOG ===" > "$DEBUG_LOG"
   echo "Timestamp: $(date)" >> "$DEBUG_LOG"
-  echo "Working directory: $(pwd)" >> "$DEBUG_LOG"
+  echo "Working directory (original): $PROJECT_DIR" >> "$DEBUG_LOG"
+  echo "Hooks directory: $HOOKS_DIR" >> "$DEBUG_LOG"
+  echo "Claude directory: $CLAUDE_DIR" >> "$DEBUG_LOG"
   echo "" >> "$DEBUG_LOG"
 fi
 
 # Persist previous session (if any) before starting new one
 if [ -f ".claude/session_start.txt" ]; then
   [ "$DEBUG_MODE" = "true" ] && echo "Running persist-capsule.sh..." >> "$DEBUG_LOG"
-  ./.claude/hooks/persist-capsule.sh > /dev/null 2>&1
+  "$HOOKS_DIR/persist-capsule.sh" > /dev/null 2>&1
 fi
 
 # Initialize Context Capsule session tracking
-./.claude/hooks/init-capsule-session.sh 2>/dev/null
+"$HOOKS_DIR/init-capsule-session.sh" 2>/dev/null
 
 # Suppress all informational output to ensure JSON is first output
 # (Hook systemMessage only works if first character is '{')
@@ -32,28 +53,29 @@ fi
   echo ""
 
   # Restore context from previous session (if recent)
-  ./.claude/hooks/restore-capsule.sh 2>/dev/null
+  "$HOOKS_DIR/restore-capsule.sh" 2>/dev/null
 
   # Load recent discoveries from exploration journal
-  ./.claude/hooks/load-from-journal.sh 2>/dev/null
+  "$HOOKS_DIR/load-from-journal.sh" 2>/dev/null
 
   # 1. Show current work context
   echo "📊 Current Work Context:"
-  if git rev-parse --git-dir > /dev/null 2>&1; then
-    BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+  echo "   Project: $PROJECT_DIR"
+  if git -C "$PROJECT_DIR" rev-parse --git-dir > /dev/null 2>&1; then
+    BRANCH=$(git -C "$PROJECT_DIR" branch --show-current 2>/dev/null || echo "unknown")
     echo "   Branch: $BRANCH"
-    git status -sb 2>/dev/null | head -5
+    git -C "$PROJECT_DIR" status -sb 2>/dev/null | head -5
   else
     echo "   No version control (file-based change tracking active)"
   fi
   echo ""
 
-  # 2. Build dependency graph (v2.0 feature)
-  if [ -f "$HOME/.claude/bin/dependency-scanner" ]; then
+  # 2. Build dependency graph (v2.0 feature) - only in git repos
+  if [ -f "$HOME/.claude/bin/dependency-scanner" ] && git -C "$PROJECT_DIR" rev-parse --git-dir > /dev/null 2>&1; then
     echo "🔍 Building dependency graph..."
 
-    "$HOME/.claude/bin/dependency-scanner" \
-      --path "$(pwd)" \
+    timeout 30 "$HOME/.claude/bin/dependency-scanner" \
+      --path "$PROJECT_DIR" \
       --output .claude/dep-graph.toon \
       2>&1 | grep -E "^(Dependency|Files|Circular|Potentially)" || true
 
@@ -61,9 +83,9 @@ fi
   fi
 
   # 3. Detect recent changes (last 24 hours)
-  if git rev-parse --git-dir > /dev/null 2>&1; then
+  if git -C "$PROJECT_DIR" rev-parse --git-dir > /dev/null 2>&1; then
     echo "🔄 Recent Changes (last 24h):"
-    RECENT_COMMITS=$(git log --oneline --since="24 hours ago" --no-merges 2>/dev/null)
+    RECENT_COMMITS=$(git -C "$PROJECT_DIR" log --oneline --since="24 hours ago" --no-merges 2>/dev/null)
     if [ -n "$RECENT_COMMITS" ]; then
         echo "$RECENT_COMMITS" | head -5
     else
@@ -73,7 +95,7 @@ fi
 
     # 4. Show active branches with context
     echo "🌿 Active Work:"
-    BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
+    BRANCH=$(git -C "$PROJECT_DIR" branch --show-current 2>/dev/null || echo "main")
     echo "   ✅ On $BRANCH"
     echo ""
   fi
@@ -157,13 +179,13 @@ fi
 # Generate initial context capsule
 if [ "$DEBUG_MODE" = "true" ]; then
   echo "Running update-capsule.sh..." >> "$DEBUG_LOG"
-  ./.claude/hooks/update-capsule.sh 2>&1 | tee -a "$DEBUG_LOG"
+  "$HOOKS_DIR/update-capsule.sh" 2>&1 | tee -a "$DEBUG_LOG"
 else
-  ./.claude/hooks/update-capsule.sh 2>/dev/null
+  "$HOOKS_DIR/update-capsule.sh" 2>/dev/null
 fi
 
 # Capture capsule output for JSON (don't send to stdout - breaks JSON parsing)
-CAPSULE_OUTPUT=$(./.claude/hooks/inject-capsule.sh 2>/dev/null)
+CAPSULE_OUTPUT=$("$HOOKS_DIR/inject-capsule.sh" 2>/dev/null)
 
 # Debug mode: log capsule but don't output to stdout
 if [ "$DEBUG_MODE" = "true" ]; then
