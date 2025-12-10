@@ -28,6 +28,98 @@ def sync_graph_cache(memory_dir: str, node_path: str) -> None:
         pass
 
 
+# === Current Task Tracking for Auto-Linking ===
+
+def get_current_task_file(memory_dir: str) -> str:
+    """Get path to current task state file."""
+    return os.path.join(memory_dir, ".current_task")
+
+
+def get_current_task(memory_dir: str) -> Optional[str]:
+    """Get the current in_progress task ID, if any."""
+    task_file = get_current_task_file(memory_dir)
+    if os.path.exists(task_file):
+        try:
+            with open(task_file, 'r') as f:
+                task_id = f.read().strip()
+                return task_id if task_id else None
+        except Exception:
+            pass
+    return None
+
+
+def set_current_task(memory_dir: str, task_id: str) -> None:
+    """Set the current in_progress task."""
+    task_file = get_current_task_file(memory_dir)
+    os.makedirs(os.path.dirname(task_file), exist_ok=True)
+    with open(task_file, 'w') as f:
+        f.write(task_id)
+
+
+def clear_current_task(memory_dir: str) -> None:
+    """Clear the current task (when completed or new task starts)."""
+    task_file = get_current_task_file(memory_dir)
+    if os.path.exists(task_file):
+        try:
+            os.remove(task_file)
+        except Exception:
+            pass
+
+
+def add_link_to_node(memory_dir: str, node_type: str, node_id: str, link_target: str) -> bool:
+    """Add a link from one node to another (updates the 'related' field)."""
+    node_path = get_node_path(memory_dir, node_type, node_id)
+
+    if not os.path.exists(node_path):
+        return False
+
+    try:
+        with open(node_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Check if link already exists
+        if link_target in content:
+            return True  # Already linked
+
+        # Find the related field and add the link
+        import re
+
+        # Match related: [...] or related: []
+        related_pattern = r'^(related:\s*\[)([^\]]*)\]'
+        match = re.search(related_pattern, content, re.MULTILINE)
+
+        if match:
+            existing = match.group(2).strip()
+            if existing:
+                # Add to existing list
+                new_related = f'{match.group(1)}{existing}, "{link_target}"]'
+            else:
+                # Empty list, add first item
+                new_related = f'{match.group(1)}"{link_target}"]'
+
+            content = re.sub(related_pattern, new_related, content, flags=re.MULTILINE)
+
+            # Also update timestamp
+            now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            content = re.sub(
+                r'^(updated:\s*)[\d\-T:Z]+',
+                f'\\g<1>{now}',
+                content,
+                flags=re.MULTILINE
+            )
+
+            with open(node_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            # Sync graph cache
+            sync_graph_cache(memory_dir, node_path)
+            return True
+    except Exception:
+        pass
+
+    return False
+
+
 def get_session_id() -> str:
     """Get current session ID from environment or generate one."""
     return os.environ.get("CLAUDE_SESSION_ID", "unknown")
@@ -138,6 +230,14 @@ def capture_file_access(
     if node_exists(memory_dir, node_type, node_id):
         # Just update timestamp
         update_node_timestamp(memory_dir, node_type, node_id)
+
+        # Auto-link to current task if one is active
+        current_task = get_current_task(memory_dir)
+        if current_task:
+            # Link file → task (bidirectional)
+            add_link_to_node(memory_dir, "file-summary", node_id, current_task)
+            add_link_to_node(memory_dir, "task", current_task, node_id)
+
         return {"status": "updated", "node_id": node_id}
 
     # Create new node
@@ -194,6 +294,14 @@ def capture_file_access(
     # Sync graph cache
     sync_graph_cache(memory_dir, node_path)
 
+    # Auto-link to current task if one is active
+    current_task = get_current_task(memory_dir)
+    if current_task:
+        # Link file → task
+        add_link_to_node(memory_dir, "file-summary", node_id, current_task)
+        # Link task → file
+        add_link_to_node(memory_dir, "task", current_task, node_id)
+
     return {"status": "created", "node_id": node_id}
 
 
@@ -242,6 +350,14 @@ def capture_task(
             with open(node_path, 'w', encoding='utf-8') as f:
                 f.write(content)
 
+            # Update current task tracking for auto-linking
+            if task_status == "in_progress":
+                set_current_task(memory_dir, node_id)
+            elif task_status == "completed":
+                # Only clear if this was the current task
+                if get_current_task(memory_dir) == node_id:
+                    clear_current_task(memory_dir)
+
             return {"status": "updated", "node_id": node_id}
         except Exception:
             pass
@@ -283,6 +399,10 @@ def capture_task(
 
     # Sync graph cache
     sync_graph_cache(memory_dir, node_path)
+
+    # Set current task for auto-linking if in_progress
+    if task_status == "in_progress":
+        set_current_task(memory_dir, node_id)
 
     return {"status": "created", "node_id": node_id}
 

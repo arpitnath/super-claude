@@ -103,6 +103,8 @@ case "$TOOL_NAME" in
       if FILE_PATH=$(echo "$TOOL_INPUT" | grep -oE '\-\-path [^ ]+' | cut -d' ' -f2); then
         if [ -n "$FILE_PATH" ]; then
           ./.claude/hooks/log-file-access.sh "$FILE_PATH" "progressive-read" 2>/dev/null || true
+          # Also capture to memory graph
+          capture_file "$FILE_PATH" "read"
         fi
       fi
       # Log progressive-reader output for debugging
