@@ -443,6 +443,11 @@ def capture_discovery(
         for fp in related_files:
             related.append(file_path_to_node_id(fp))
 
+    # Auto-link to current task if one is active
+    current_task = get_current_task(memory_dir)
+    if current_task and current_task not in related:
+        related.append(current_task)
+
     title = f"{category.title()}: {insight[:60]}"
     content = f"""## Discovery
 {insight}
@@ -477,6 +482,10 @@ def capture_discovery(
 
     # Sync graph cache
     sync_graph_cache(memory_dir, node_path)
+
+    # Link current task to this discovery (bidirectional)
+    if current_task:
+        add_link_to_node(memory_dir, "task", current_task, node_id)
 
     return {"status": "created", "node_id": node_id}
 
