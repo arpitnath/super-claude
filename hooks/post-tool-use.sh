@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+# Defensive check: Ensure CWD exists (can be invalid if directory was deleted)
+if ! cd "$(pwd 2>/dev/null)" 2>/dev/null; then
+  cd "$HOME" 2>/dev/null || exit 0
+fi
+
 # Read JSON from stdin (Claude Code's hook protocol)
 INPUT_JSON=$(cat)
 

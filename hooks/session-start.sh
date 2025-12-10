@@ -3,6 +3,11 @@
 # Claude Capsule Kit Session Start Hook
 # Runs at session start to load context and restore memory
 
+# Defensive check: Ensure CWD exists (can be invalid if directory was deleted)
+if ! cd "$(pwd 2>/dev/null)" 2>/dev/null; then
+  cd "$HOME" 2>/dev/null || exit 0
+fi
+
 # Debug mode - set via environment variable
 DEBUG_MODE="${CLAUDE_DEBUG_HOOKS:-false}"
 DEBUG_LOG=".claude/session-start-debug.log"
