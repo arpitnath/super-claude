@@ -35,6 +35,7 @@ TYPE_CONFIG = {
     "discovery": {"color": CYAN, "symbol": "★", "icon": "💡"},
     "session": {"color": MAGENTA, "symbol": "◈", "icon": "📅"},
     "error": {"color": RED, "symbol": "✕", "icon": "❌"},
+    "subagent": {"color": MAGENTA, "symbol": "◎", "icon": "🤖"},
 }
 
 

@@ -166,7 +166,8 @@ def get_node_path(memory_dir: str, node_type: str, node_id: str) -> str:
         "discovery": "discoveries",
         "session": "sessions",
         "task": "tasks",
-        "error": "errors"
+        "error": "errors",
+        "subagent": "subagents"
     }
 
     subdir = type_dir_map.get(node_type, node_type + "s")
@@ -559,6 +560,81 @@ def capture_error(
     return {"status": "created", "node_id": node_id}
 
 
+def capture_subagent(
+    memory_dir: str,
+    agent_type: str,
+    summary: str
+) -> Dict:
+    """
+    Capture a subagent result from Task tool.
+
+    Args:
+        memory_dir: Path to memory directory
+        agent_type: Type of agent (e.g., "Explore", "Plan", "code-reviewer")
+        summary: Summary of agent findings/output
+
+    Returns:
+        Dict with status and node_id
+    """
+    # Create unique ID from agent type and content hash
+    content_hash = hashlib.md5(summary.encode()).hexdigest()[:8]
+    node_id = f"subagent-{sanitize_id(agent_type)}-{content_hash}"
+    node_type = "subagent"
+
+    # Check if this exact result already exists
+    if node_exists(memory_dir, node_type, node_id):
+        return {"status": "exists", "node_id": node_id}
+
+    tags = ["subagent", sanitize_id(agent_type)]
+
+    # Auto-link to current task if one is active
+    related = []
+    current_task = get_current_task(memory_dir)
+    if current_task:
+        related.append(current_task)
+
+    title = f"Agent: {agent_type}"
+    content = f"""## Subagent Result
+**Agent Type:** {agent_type}
+
+## Summary
+{summary}
+
+## Context
+Session: {get_session_id()}
+"""
+
+    extra_frontmatter = {
+        "session_id": get_session_id(),
+        "agent_type": agent_type
+    }
+
+    node_content = create_node(
+        node_id=node_id,
+        node_type=node_type,
+        title=title,
+        content=content,
+        tags=tags,
+        related=related,
+        extra_frontmatter=extra_frontmatter
+    )
+
+    node_path = get_node_path(memory_dir, node_type, node_id)
+    os.makedirs(os.path.dirname(node_path), exist_ok=True)
+
+    with open(node_path, 'w', encoding='utf-8') as f:
+        f.write(node_content)
+
+    # Sync graph cache
+    sync_graph_cache(memory_dir, node_path)
+
+    # Link current task to this subagent result (bidirectional)
+    if current_task:
+        add_link_to_node(memory_dir, "task", current_task, node_id)
+
+    return {"status": "created", "node_id": node_id}
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -597,6 +673,11 @@ if __name__ == "__main__":
     error_parser.add_argument("--related", nargs="*", default=[],
                              help="Related file paths")
 
+    # Subagent capture
+    subagent_parser = subparsers.add_parser("subagent", help="Capture subagent result")
+    subagent_parser.add_argument("agent_type", help="Type of agent (e.g., Explore, Plan)")
+    subagent_parser.add_argument("summary", help="Summary of agent findings")
+
     args = parser.parse_args()
 
     memory_dir = os.environ.get("CLAUDE_MEMORY_DIR", args.memory_dir)
@@ -610,6 +691,8 @@ if __name__ == "__main__":
     elif args.command == "error":
         result = capture_error(memory_dir, args.error_type, args.message,
                               args.context, args.related)
+    elif args.command == "subagent":
+        result = capture_subagent(memory_dir, args.agent_type, args.summary)
     else:
         parser.print_help()
         sys.exit(1)

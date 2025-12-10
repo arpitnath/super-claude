@@ -51,6 +51,15 @@ capture_task() {
     fi
 }
 
+# Function to capture subagent result to memory graph
+capture_subagent() {
+    local agent_type="$1"
+    local summary="$2"
+    if [ "$MEMORY_ENABLED" = "true" ]; then
+        CLAUDE_MEMORY_DIR="$MEMORY_DIR" python3 "$CAPTURE_PY" subagent "$agent_type" "$summary" >/dev/null 2>&1 &
+    fi
+}
+
 # Extract fields from JSON using python3
 TOOL_NAME=$(echo "$INPUT_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('tool_name', ''))" 2>/dev/null || echo "")
 TOOL_INPUT=$(echo "$INPUT_JSON" | python3 -c "import sys, json; import json as j; print(j.dumps(json.load(sys.stdin).get('tool_input', {})))" 2>/dev/null || echo "{}")
@@ -93,6 +102,8 @@ case "$TOOL_NAME" in
       if [ -n "$AGENT_TYPE" ] && [ -n "$TOOL_OUTPUT" ]; then
         SUMMARY=$(echo "$TOOL_OUTPUT" | head -c 200 | tr '\n' ' ')
         ./.claude/hooks/log-subagent.sh "$AGENT_TYPE" "$SUMMARY" 2>/dev/null || true
+        # Capture to memory graph
+        capture_subagent "$AGENT_TYPE" "$SUMMARY"
       fi
     fi
     ;;
