@@ -48,6 +48,14 @@ if [ -f "$SESSION_START_FILE" ]; then
   echo ""
 fi
 
+# Persist session to memory graph (if available)
+if [ -f ".claude/hooks/session-end-memory.sh" ]; then
+  ./.claude/hooks/session-end-memory.sh 2>/dev/null &
+fi
+
+# Clear current task tracker (session ended)
+rm -f .claude/memory/.current_task 2>/dev/null || true
+
 # Clean up temporary session files (not logs, just trackers)
 rm -f .claude/recent_reads.log 2>/dev/null || true
 rm -f .claude/read_warnings_shown.log 2>/dev/null || true

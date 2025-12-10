@@ -167,6 +167,13 @@ else
   ./.claude/hooks/update-capsule.sh 2>/dev/null
 fi
 
+# Inject memory graph context (if available)
+MEMORY_CONTEXT=""
+if [ -f "./.claude/hooks/session-start-memory.sh" ]; then
+  MEMORY_CONTEXT=$(./.claude/hooks/session-start-memory.sh 2>/dev/null || echo "")
+  [ "$DEBUG_MODE" = "true" ] && echo "Memory context loaded: ${#MEMORY_CONTEXT} chars" >> "$DEBUG_LOG"
+fi
+
 # Capture capsule output for JSON (don't send to stdout - breaks JSON parsing)
 CAPSULE_OUTPUT=$(./.claude/hooks/inject-capsule.sh 2>/dev/null)
 
@@ -181,12 +188,20 @@ if [ "$DEBUG_MODE" = "true" ]; then
   echo "DEBUG: Outputting JSON with systemMessage and capsule..." >> "$DEBUG_LOG"
 fi
 
+# Combine capsule and memory context
+FULL_CONTEXT="$CAPSULE_OUTPUT"
+if [ -n "$MEMORY_CONTEXT" ]; then
+  FULL_CONTEXT="$CAPSULE_OUTPUT
+
+$MEMORY_CONTEXT"
+fi
+
 # Output ONLY JSON (first character MUST be '{' for systemMessage to work)
-# Include capsule in additionalContext so Claude receives it
+# Include capsule + memory in additionalContext so Claude receives it
 if command -v jq > /dev/null 2>&1; then
   jq -n \
     --arg msg "Claude Capsule Kit - Context and tools loaded" \
-    --arg context "$CAPSULE_OUTPUT" \
+    --arg context "$FULL_CONTEXT" \
     '{
       systemMessage: $msg,
       hookSpecificOutput: {
