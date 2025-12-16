@@ -49,7 +49,7 @@ if gh repo view "$REPO_FULL" &>/dev/null 2>&1; then
 else
     echo ""
     echo "Creating private repository: $REPO_FULL"
-    gh repo create "$REPO_NAME" --private --description "Claude Code session sync (via Super Claude Kit)" 2>/dev/null || {
+    gh repo create "$REPO_NAME" --private --description "Claude Code session sync (via Claude Capsule Kit)" 2>/dev/null || {
         echo "❌ Failed to create repository"
         exit 1
     }
@@ -86,7 +86,7 @@ sessions/
 
 ## Related
 
-- [Super Claude Kit](https://github.com/arpitnath/super-claude-kit)
+- [Claude Capsule Kit](https://github.com/arpitnath/super-claude-kit)
 '
 
     README_B64=$(echo "$README_CONTENT" | base64)

@@ -215,7 +215,7 @@ if data["discoveries"]:
 md += """
 ---
 
-*Synced via [Super Claude Kit](https://github.com/arpitnath/super-claude-kit) Session Sync*
+*Synced via [Claude Capsule Kit](https://github.com/arpitnath/super-claude-kit) Session Sync*
 """
 
 print(md)

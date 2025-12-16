@@ -115,7 +115,7 @@ The user wants to continue Claude Code sessions in Claude Web using GitHub MCP. 
 
 ## Continue Prompt
 
-> I was implementing session sync for Super Claude Kit. Core push is working - sessions sync to GitHub on end. Next I need to integrate the summarizer agent into push-session.sh and test the --continue behavior. Check scripts/push-session.sh for current state.
+> I was implementing session sync for Claude Capsule Kit. Core push is working - sessions sync to GitHub on end. Next I need to integrate the summarizer agent into push-session.sh and test the --continue behavior. Check scripts/push-session.sh for current state.
 ```
 
 ## When to Use This Agent
