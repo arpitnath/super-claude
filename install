@@ -441,7 +441,7 @@ with open('.claude/settings.local.json', 'r') as f:
     existing = json.load(f)
 
 def make_hook_cmd(hook_file):
-    return f'bash -c \'DIR=$PWD; while [ "$DIR" != "/" ]; do [ -d "$DIR/.claude" ] && cd "$DIR" && exec bash .claude/hooks/{hook_file}; DIR=$(dirname "$DIR"); done\''
+    return f'bash -c \'DIR=$PWD; while [ "$DIR" != "/" ]; do [ -d "$DIR/.claude" ] && cd "$DIR" && exec bash .claude/hooks/{hook_file}; DIR=$(dirname "$DIR"); done; exit 0\''
 
 required_hooks = {
     "SessionStart": [{

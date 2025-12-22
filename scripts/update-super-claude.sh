@@ -169,6 +169,13 @@ fi
 
 echo ""
 
+# Apply hook error fix for users on v2.0.0 or v2.0.1
+if [ -f ".claude/scripts/fix-hook-errors.sh" ]; then
+  echo "Applying hook error fix..."
+  bash .claude/scripts/fix-hook-errors.sh
+  echo ""
+fi
+
 # Check if migration needed
 if [ "$CURRENT_VERSION" != "unknown" ]; then
   OLD_MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1 | tr -d 'v')

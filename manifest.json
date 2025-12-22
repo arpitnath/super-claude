@@ -44,7 +44,8 @@
       "show-deps-tree.sh",
       "show-capsule-visual.sh",
       "test-super-claude.sh",
-      "update-super-claude.sh"
+      "update-super-claude.sh",
+      "fix-hook-errors.sh"
     ],
     "tools": [
       "dependency-scanner",
