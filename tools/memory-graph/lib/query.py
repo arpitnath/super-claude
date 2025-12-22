@@ -115,7 +115,7 @@ def parse_date_arg(value: str) -> Optional[datetime]:
     if value == "all" or value.strip() == "":
         return None
     # Parse time range
-    unit = value[-1]
+    unit = value[-1].lower()
     accepted_units = ["h", "d", "m", "y"]
     if unit not in accepted_units:
         raise ValueError(f"Time range unit must be one of: {accepted_units}.")
