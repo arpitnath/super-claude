@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-01-06
+
+### Added
+
+- **Intelligence Layer** with 6 specialist agents for multi-perspective analysis:
+  - `brainstorm-coordinator` - Orchestrates specialist agents for comprehensive analysis
+  - `database-architect` - Database schema design and query optimization
+  - `devops-sre` - Production readiness and operational concerns
+  - `product-dx-specialist` - Developer experience and API design
+  - `security-engineer` - Security analysis and threat modeling
+  - `system-architect` - Technical architecture and scalability
+- Intelligence Layer design documentation (`docs/INTELLIGENCE_LAYER.md`)
+- Time-based filtering for memory queries with `--since` flag (#23 by @cbrowning04)
+  - Supports: hours (24h), days (7d), months (1m), years (1y)
+- Hook error fix script (`scripts/fix-hook-errors.sh`)
+
+### Fixed
+
+- Hook errors when Task subagents run from non-project directories
+- Missing `session-summarizer.md` agent in manifest.json
+
+### Changed
+
+- Updated install script for better subagent CWD handling
+
+---
+
 ## [2.0.2] - 2025-11-15
 
 ### Fixed
